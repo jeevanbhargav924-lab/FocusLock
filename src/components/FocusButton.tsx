@@ -7,7 +7,7 @@ import {
   ViewStyle,
   TextStyle,
 } from 'react-native';
-import { colors, typography, spacing } from '../theme';
+import { colors, typography, spacing, fonts } from '../theme';
 
 interface FocusButtonProps {
   title: string;
@@ -143,6 +143,7 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   buttonText: {
+    fontFamily: fonts.bold,
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.2,

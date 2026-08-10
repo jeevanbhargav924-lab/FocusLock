@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   SafeAreaView,
 } from 'react-native';
-import { spacing } from '../theme';
+import { spacing, fonts } from '../theme';
 import { BackIcon } from '../utils/Icons';
 
 interface PrivacyPolicyScreenProps {
@@ -177,7 +177,7 @@ export const PrivacyPolicyScreen: React.FC<PrivacyPolicyScreenProps> = ({ onBack
             If you have questions, concerns, or requests regarding this Privacy Policy or FocusLock's privacy practices, please contact us at:
           </Text>
           <View style={styles.contactCard}>
-            <Text style={styles.contactEmail}>Email: support@focuslock.app</Text>
+            <Text style={styles.contactEmail}>Email: Jeevanbhargav286@gmail.com</Text>
           </View>
 
           <View style={styles.footerBrand}>
@@ -215,6 +215,7 @@ const styles = StyleSheet.create({
     padding: spacing.xs,
   },
   topTitle: {
+    fontFamily: fonts.bold,
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '700',
@@ -228,19 +229,20 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl * 2,
   },
   documentTitle: {
+    fontFamily: fonts.bold,
     color: '#FFFFFF',
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '800',
     marginBottom: 4,
-    letterSpacing: -0.5,
   },
   lastUpdatedText: {
-    color: '#4ECCA3',
-    fontSize: 13,
-    fontWeight: '600',
+    fontFamily: fonts.regular,
+    color: '#8B949E',
+    fontSize: 12,
     marginBottom: spacing.lg,
   },
   sectionHeader: {
+    fontFamily: fonts.bold,
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '700',
@@ -248,6 +250,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs + 2,
   },
   subHeader: {
+    fontFamily: fonts.bold,
     color: '#9DA9FF',
     fontSize: 15,
     fontWeight: '700',
@@ -255,12 +258,14 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   paragraph: {
+    fontFamily: fonts.regular,
     color: '#C9D1D9',
     fontSize: 14,
     lineHeight: 22,
     marginBottom: spacing.sm,
   },
   highlightParagraph: {
+    fontFamily: fonts.medium,
     color: '#F0F6FC',
     backgroundColor: '#161B22',
     padding: spacing.md,
@@ -277,6 +282,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   bulletItem: {
+    fontFamily: fonts.regular,
     color: '#8B949E',
     fontSize: 14,
     lineHeight: 22,
@@ -295,6 +301,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
   },
   tableCol1: {
+    fontFamily: fonts.bold,
     width: '40%',
     color: '#4F8CFF',
     fontSize: 13,
@@ -302,6 +309,7 @@ const styles = StyleSheet.create({
     paddingRight: 6,
   },
   tableCol2: {
+    fontFamily: fonts.regular,
     width: '60%',
     color: '#C9D1D9',
     fontSize: 12.5,
@@ -321,6 +329,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
   contactEmail: {
+    fontFamily: fonts.bold,
     color: '#4F8CFF',
     fontSize: 14,
     fontWeight: '700',
@@ -333,12 +342,14 @@ const styles = StyleSheet.create({
     borderTopColor: 'rgba(255, 255, 255, 0.05)',
   },
   footerBrandTitle: {
+    fontFamily: fonts.bold,
     color: '#FFFFFF',
     fontSize: 20,
     fontWeight: '800',
     marginBottom: 4,
   },
   footerBrandSub: {
+    fontFamily: fonts.regular,
     color: '#8B949E',
     fontSize: 13,
     textAlign: 'center',

@@ -1,58 +1,58 @@
 export const colors = {
   // Dark canvas background
-  background: '#0F141B',
+  background: '#0B0D10',
 
-  // Surface & Neutral (from Design System: Neutral #161B22)
-  surface: '#161B22',
-  surfaceLow: '#11151D',
-  surfaceHigh: '#1F242D',
-  surfaceHighest: '#2A303C',
-  surfaceBright: '#343941',
+  // Surface & Neutral
+  surface: '#13161B',
+  surfaceLow: '#101318',
+  surfaceHigh: '#191D23',
+  surfaceHighest: '#20252D',
+  surfaceBright: '#282E37',
 
-  // Primary (#4F8CFF - Electric Focus Blue)
-  primary: '#4F8CFF',
-  primaryLight: '#AFC6FF',
-  primaryDark: '#004398',
-  onPrimary: '#002D6C',
-  primaryContainer: 'rgba(79, 140, 255, 0.2)',
+  // Primary - Focus Blue
+  primary: '#5C8EF2',
+  primaryLight: '#8EAEFF',
+  primaryDark: '#3D6FD1',
+  onPrimary: '#FFFFFF',
+  primaryContainer: 'rgba(92, 142, 242, 0.14)',
 
-  // Secondary (#6EE7B7 - Flow Mint Green)
-  secondary: '#6EE7B7',
-  secondaryLight: '#80F9C8',
-  secondaryDark: '#00513A',
-  onSecondary: '#003827',
-  secondaryContainer: 'rgba(110, 231, 183, 0.2)',
-  accentGreen: '#6EE7B7',
-  accentGreenLight: '#80F9C8',
-  accentGreenDark: '#00513A',
+  // Secondary - Focus Green
+  secondary: '#54C69A',
+  secondaryLight: '#7ADAB7',
+  secondaryDark: '#32906D',
+  onSecondary: '#081A13',
+  secondaryContainer: 'rgba(84, 198, 154, 0.13)',
+  accentGreen: '#54C69A',
+  accentGreenLight: '#7ADAB7',
+  accentGreenDark: '#32906D',
 
-  // Tertiary (#F59E0B - Amber Golden)
-  tertiary: '#F59E0B',
-  tertiaryLight: '#FFB95F',
-  tertiaryDark: '#CA8100',
-  onTertiary: '#472A00',
-  tertiaryContainer: 'rgba(245, 158, 11, 0.2)',
-  accentOrange: '#F59E0B',
+  // Tertiary - Warm Amber
+  tertiary: '#E5A84B',
+  tertiaryLight: '#F0C477',
+  tertiaryDark: '#B77B28',
+  onTertiary: '#1C1205',
+  tertiaryContainer: 'rgba(229, 168, 75, 0.13)',
+  accentOrange: '#E5A84B',
 
   // Neutral Colors
-  neutral: '#161B22',
-  neutralLight: '#2C3138',
+  neutral: '#13161B',
+  neutralLight: '#303640',
 
-  // Error / Danger (Coral Pink #FFB4AB / Red)
-  error: '#FFB4AB',
-  onError: '#690005',
-  errorContainer: 'rgba(255, 180, 171, 0.2)',
+  // Error / Danger
+  error: '#F06F6F',
+  onError: '#210808',
+  errorContainer: 'rgba(240, 111, 111, 0.13)',
 
   // Text Hierarchy
-  textPrimary: '#DEE2EC',
-  textSecondary: '#C2C6D6',
-  textMuted: '#8C909F',
+  textPrimary: '#F1F3F5',
+  textSecondary: '#AEB6C2',
+  textMuted: '#737D89',
 
   // Input background & Borders
-  inputBackground: '#11151D',
-  border: 'rgba(255, 255, 255, 0.08)',
-  borderActive: '#AFC6FF',
+  inputBackground: '#111419',
+  border: 'rgba(255, 255, 255, 0.075)',
+  borderActive: '#5C8EF2',
 
   // Translucent / Glass
-  glassBackground: 'rgba(22, 27, 34, 0.90)',
+  glassBackground: 'rgba(19, 22, 27, 0.96)',
 };

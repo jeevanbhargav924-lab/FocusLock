@@ -11,7 +11,7 @@ import {
   ActivityIndicator,
   SafeAreaView,
 } from 'react-native';
-import { spacing } from '../theme';
+import { spacing, colors } from '../theme';
 import { BackIcon, SettingsIcon } from '../utils/Icons';
 
 export interface AppItem {
@@ -25,8 +25,16 @@ export interface AppItem {
 interface AllowedAppsScreenProps {
   onBack?: () => void;
   onClose?: () => void;
-  onSaveAllowedApps?: (count: number, blockedPkgs: string[], allowedPkgs: string[]) => void;
-  onUpdateAllowedApps?: (count: number, blockedPkgs: string[], allowedPkgs: string[]) => void;
+  onSaveAllowedApps?: (
+    count: number,
+    blockedPkgs: string[],
+    allowedPkgs: string[],
+  ) => void;
+  onUpdateAllowedApps?: (
+    count: number,
+    blockedPkgs: string[],
+    allowedPkgs: string[],
+  ) => void;
 }
 
 export const AllowedAppsScreen: React.FC<AllowedAppsScreenProps> = ({
@@ -36,17 +44,8 @@ export const AllowedAppsScreen: React.FC<AllowedAppsScreenProps> = ({
   onUpdateAllowedApps,
 }) => {
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [loading, setLoading] = useState<boolean>(false);
-  const [apps, setApps] = useState<AppItem[]>([
-    { id: '1', name: 'Phone', packageName: 'com.android.dialer', iconText: '📞', isAllowed: true },
-    { id: '2', name: 'Maps', packageName: 'com.google.android.apps.maps', iconText: '🗺️', isAllowed: true },
-    { id: '3', name: 'Calculator', packageName: 'com.google.android.calculator', iconText: '𝧮', isAllowed: true },
-    { id: '4', name: 'Instagram', packageName: 'com.instagram.android', iconText: '📷', isAllowed: false },
-    { id: '5', name: 'YouTube', packageName: 'com.google.android.youtube', iconText: '▶️', isAllowed: false },
-    { id: '6', name: 'Reddit', packageName: 'com.reddit.frontpage', iconText: '💬', isAllowed: false },
-    { id: '7', name: 'Chrome', packageName: 'com.android.chrome', iconText: '🌐', isAllowed: false },
-    { id: '8', name: 'Facebook', packageName: 'com.facebook.katana', iconText: '📘', isAllowed: false },
-  ]);
+  const [loading, setLoading] = useState(true);
+  const [apps, setApps] = useState<AppItem[]>([]);
 
   useEffect(() => {
     let isMounted = true;
@@ -65,9 +64,13 @@ export const AllowedAppsScreen: React.FC<AllowedAppsScreenProps> = ({
   }, []);
 
   const loadRealInstalledApps = async () => {
-    if (Platform.OS === 'android' && NativeModules.PermissionModule?.getInstalledApps) {
+    if (
+      Platform.OS === 'android' &&
+      NativeModules.PermissionModule?.getInstalledApps
+    ) {
       try {
-        const rawApps: any[] = await NativeModules.PermissionModule.getInstalledApps();
+        const rawApps: any[] =
+          await NativeModules.PermissionModule.getInstalledApps();
         if (Array.isArray(rawApps) && rawApps.length > 0) {
           const parsedApps: AppItem[] = rawApps.map((a, idx) => ({
             id: a.packageName || String(idx),
@@ -95,7 +98,12 @@ export const AllowedAppsScreen: React.FC<AllowedAppsScreenProps> = ({
     if (lower.includes('calc')) return '𝧮';
     if (lower.includes('insta')) return '📷';
     if (lower.includes('tube') || lower.includes('video')) return '▶️';
-    if (lower.includes('chat') || lower.includes('messag') || lower.includes('what')) return '💬';
+    if (
+      lower.includes('chat') ||
+      lower.includes('messag') ||
+      lower.includes('what')
+    )
+      return '💬';
     if (lower.includes('browser') || lower.includes('chrome')) return '🌐';
     if (lower.includes('game') || lower.includes('play')) return '🎮';
     if (lower.includes('mail') || lower.includes('gmail')) return '✉️';
@@ -113,21 +121,27 @@ export const AllowedAppsScreen: React.FC<AllowedAppsScreenProps> = ({
 
   const toggleApp = (id: string) => {
     setApps(prev =>
-      prev.map(app => (app.id === id ? { ...app, isAllowed: !app.isAllowed } : app))
+      prev.map(app =>
+        app.id === id ? { ...app, isAllowed: !app.isAllowed } : app,
+      ),
     );
   };
 
   const filteredApps = apps.filter(app =>
-    app.name.toLowerCase().includes(searchQuery.toLowerCase())
+    app.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const allowedApps = filteredApps.filter(app => app.isAllowed);
   const blockedApps = filteredApps.filter(app => !app.isAllowed);
 
   const handleSave = () => {
-    const allowed = apps.filter(a => a.isAllowed).map(a => a.packageName || a.id);
-    const blocked = apps.filter(a => !a.isAllowed).map(a => a.packageName || a.id);
-    
+    const allowed = apps
+      .filter(a => a.isAllowed)
+      .map(a => a.packageName || a.id);
+    const blocked = apps
+      .filter(a => !a.isAllowed)
+      .map(a => a.packageName || a.id);
+
     if (onSaveAllowedApps) {
       onSaveAllowedApps(allowed.length, blocked, allowed);
     }
@@ -139,11 +153,17 @@ export const AllowedAppsScreen: React.FC<AllowedAppsScreenProps> = ({
 
   return (
     <SafeAreaView style={styles.fullScreenContainer}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+      >
         {/* Top Header Bar */}
         <View style={styles.topBar}>
           <TouchableOpacity onPress={handleDismiss} style={styles.backBtn}>
-            <Text style={styles.backArrow}> <BackIcon/> </Text>
+            <Text style={styles.backArrow}>
+              {' '}
+              <BackIcon />{' '}
+            </Text>
           </TouchableOpacity>
           <Text style={styles.brandTitle}>FocusLock</Text>
           <View style={{ width: 24 }} />
@@ -153,7 +173,8 @@ export const AllowedAppsScreen: React.FC<AllowedAppsScreenProps> = ({
         <View style={styles.header}>
           <Text style={styles.mainTitle}>Select Allowed Apps</Text>
           <Text style={styles.subtitle}>
-            Choose which apps remain accessible during your focus session. Everything else will be blocked.
+            Choose which apps remain accessible during your focus session.
+            Everything else will be blocked.
           </Text>
         </View>
 
@@ -170,7 +191,11 @@ export const AllowedAppsScreen: React.FC<AllowedAppsScreenProps> = ({
         </View>
 
         {loading ? (
-          <ActivityIndicator size="large" color="#4ECCA3" style={{ marginVertical: 30 }} />
+          <ActivityIndicator
+            size="large"
+            color="#4ECCA3"
+            style={{ marginVertical: 30 }}
+          />
         ) : (
           <>
             {/* Section 1: Allowed Apps */}
@@ -193,7 +218,8 @@ export const AllowedAppsScreen: React.FC<AllowedAppsScreenProps> = ({
                   <TouchableOpacity
                     activeOpacity={0.8}
                     onPress={() => toggleApp(app.id)}
-                    style={styles.removePill}>
+                    style={styles.removePill}
+                  >
                     <Text style={styles.removePillText}>Remove</Text>
                   </TouchableOpacity>
                 </View>
@@ -220,7 +246,8 @@ export const AllowedAppsScreen: React.FC<AllowedAppsScreenProps> = ({
                   <TouchableOpacity
                     activeOpacity={0.8}
                     onPress={() => toggleApp(app.id)}
-                    style={styles.addPill}>
+                    style={styles.addPill}
+                  >
                     <Text style={styles.addPillText}>+ Allow</Text>
                   </TouchableOpacity>
                 </View>
@@ -228,15 +255,18 @@ export const AllowedAppsScreen: React.FC<AllowedAppsScreenProps> = ({
             </View>
           </>
         )}
+      </ScrollView>
 
-        {/* Save Button */}
+      {/* Fixed Bottom Save Action */}
+      <View style={styles.fixedBottomContainer}>
         <TouchableOpacity
           activeOpacity={0.85}
           style={styles.saveBtn}
-          onPress={handleSave}>
+          onPress={handleSave}
+        >
           <Text style={styles.saveBtnText}>Save Allowed Apps</Text>
         </TouchableOpacity>
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 };
@@ -244,33 +274,33 @@ export const AllowedAppsScreen: React.FC<AllowedAppsScreenProps> = ({
 const styles = StyleSheet.create({
   fullScreenContainer: {
     flex: 1,
-    backgroundColor: '#0D1117',
+    backgroundColor: colors.background,
   },
   container: {
     flex: 1,
-    backgroundColor: '#0D1117',
+    backgroundColor: colors.background,
   },
   content: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
-    paddingBottom: spacing.xl + 40,
+    paddingBottom: spacing.lg,
   },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: spacing.md,
-    paddingTop:30
+    paddingTop: 30,
   },
   backBtn: {
     padding: spacing.xs,
   },
   backArrow: {
-    color: '#D0D7DE',
+    color: colors.textPrimary,
     fontSize: 22,
   },
   brandTitle: {
-    color: '#D0D7DE',
+    color: colors.textPrimary,
     fontSize: 20,
     fontWeight: '700',
   },
@@ -284,25 +314,25 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   mainTitle: {
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     fontSize: 24,
     fontWeight: '700',
     marginBottom: 4,
   },
   subtitle: {
-    color: '#8B949E',
+    color: colors.textSecondary,
     fontSize: 13,
     lineHeight: 18,
   },
   searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#161B22',
+    backgroundColor: colors.surface,
     borderRadius: 14,
     paddingHorizontal: 14,
     height: 46,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: colors.border,
     marginBottom: spacing.lg,
   },
   searchIcon: {
@@ -311,7 +341,7 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     fontSize: 14,
   },
   section: {
@@ -321,13 +351,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   sectionLabelGreen: {
-    color: '#4ECCA3',
+    color: colors.secondary,
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.8,
   },
   sectionLabelRed: {
-    color: '#FF6B6B',
+    color: colors.error,
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.8,
@@ -335,19 +365,19 @@ const styles = StyleSheet.create({
   appRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#161B22',
+    backgroundColor: colors.surface,
     borderRadius: 14,
     padding: 12,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.04)',
+    borderColor: colors.border,
     gap: 12,
   },
   appIconBadgeAllowed: {
     width: 40,
     height: 40,
     borderRadius: 10,
-    backgroundColor: 'rgba(78, 204, 163, 0.12)',
+    backgroundColor: colors.secondaryContainer,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -355,7 +385,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 10,
-    backgroundColor: 'rgba(255, 107, 107, 0.12)',
+    backgroundColor: colors.errorContainer,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -363,52 +393,58 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   appName: {
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     fontSize: 15,
     fontWeight: '600',
   },
   appSubText: {
-    color: '#8B949E',
+    color: colors.textSecondary,
     fontSize: 12,
     marginTop: 2,
   },
   removePill: {
-    backgroundColor: 'rgba(255, 107, 107, 0.15)',
+    backgroundColor: colors.errorContainer,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 10,
   },
   removePillText: {
-    color: '#FF6B6B',
+    color: colors.error,
     fontSize: 12,
     fontWeight: '600',
   },
   addPill: {
-    backgroundColor: 'rgba(78, 204, 163, 0.15)',
+    backgroundColor: colors.secondaryContainer,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 10,
   },
   addPillText: {
-    color: '#4ECCA3',
+    color: colors.secondary,
     fontSize: 12,
     fontWeight: '600',
   },
+  fixedBottomContainer: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.background,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
   saveBtn: {
-    backgroundColor: '#4ECCA3',
+    backgroundColor: colors.primary,
     borderRadius: 16,
     height: 52,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: spacing.md,
-    shadowColor: '#4ECCA3',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 10,
     elevation: 6,
   },
   saveBtnText: {
-    color: '#0D1117',
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '800',
   },

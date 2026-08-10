@@ -9,13 +9,13 @@ import {
   Switch,
   SafeAreaView,
 } from 'react-native';
-import { spacing, radius } from '../theme';
+import { spacing, radius, fonts } from '../theme';
 import { PasscodeModal } from '../components/PasscodeModal';
 import { BackIcon, SettingsIcon } from '../utils/Icons';
 
 interface CreateSessionScreenProps {
-  onStartCreatedSession?: (minutes: number, strictMode: boolean, sessionPin: string) => void;
-  onStartSession?: (minutes: number, strictMode: boolean, sessionPin: string) => void;
+  onStartCreatedSession?: (minutes: number, strictMode: boolean, sessionPin: string, sessionTitle?: string) => void;
+  onStartSession?: (minutes: number, strictMode: boolean, sessionPin: string, sessionTitle?: string) => void;
   onCancel?: () => void;
   onClose?: () => void;
   onNavigateToAllowedApps?: () => void;
@@ -42,11 +42,12 @@ export const CreateSessionScreen: React.FC<CreateSessionScreenProps> = ({
   };
 
   const handleStartSession = (mins: number, strict: boolean, pin: string) => {
+    const title = sessionName.trim() || 'Deep Focus Session';
     if (onStartCreatedSession) {
-      onStartCreatedSession(mins, strict, pin);
+      onStartCreatedSession(mins, strict, pin, title);
     }
     if (onStartSession) {
-      onStartSession(mins, strict, pin);
+      onStartSession(mins, strict, pin, title);
     }
   };
 
@@ -266,6 +267,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
   },
   brandTitle: {
+    fontFamily: fonts.bold,
     color: '#D0D7DE',
     fontSize: 20,
     fontWeight: '700',
@@ -280,12 +282,14 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   mainTitle: {
+    fontFamily: fonts.bold,
     color: '#FFFFFF',
     fontSize: 24,
     fontWeight: '700',
     marginBottom: 4,
   },
   subtitle: {
+    fontFamily: fonts.regular,
     color: '#8B949E',
     fontSize: 14,
   },
@@ -298,6 +302,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.05)',
   },
   cardHeaderLabel: {
+    fontFamily: fonts.bold,
     color: '#8B949E',
     fontSize: 11,
     fontWeight: '700',
@@ -310,6 +315,7 @@ const styles = StyleSheet.create({
     marginVertical: spacing.sm,
   },
   clockText: {
+    fontFamily: fonts.medium,
     color: '#FFFFFF',
     fontSize: 48,
     fontWeight: '300',
@@ -335,11 +341,13 @@ const styles = StyleSheet.create({
     borderColor: '#4F8CFF',
   },
   presetBadgeText: {
+    fontFamily: fonts.semiBold,
     color: '#8B949E',
     fontSize: 13,
     fontWeight: '600',
   },
   presetBadgeTextSelected: {
+    fontFamily: fonts.bold,
     color: '#FFFFFF',
     fontWeight: '700',
   },
@@ -347,6 +355,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   inputLabel: {
+    fontFamily: fonts.bold,
     color: '#8B949E',
     fontSize: 11,
     fontWeight: '700',
@@ -361,6 +370,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   textInput: {
+    fontFamily: fonts.regular,
     color: '#FFFFFF',
     paddingVertical: spacing.sm + 2,
     fontSize: 14,
@@ -382,11 +392,13 @@ const styles = StyleSheet.create({
     borderColor: '#4ECCA3',
   },
   tagPillText: {
+    fontFamily: fonts.medium,
     color: '#8B949E',
     fontSize: 13,
     fontWeight: '500',
   },
   tagPillTextSelected: {
+    fontFamily: fonts.bold,
     color: '#4ECCA3',
     fontWeight: '700',
   },
@@ -421,11 +433,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   constraintTitle: {
+    fontFamily: fonts.semiBold,
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '600',
   },
   constraintSub: {
+    fontFamily: fonts.regular,
     color: '#8B949E',
     fontSize: 12,
     marginTop: 2,
@@ -455,6 +469,7 @@ const styles = StyleSheet.create({
     marginRight: spacing.xs + 2,
   },
   startBtnText: {
+    fontFamily: fonts.bold,
     color: '#1E1B4B',
     fontSize: 16,
     fontWeight: '700',

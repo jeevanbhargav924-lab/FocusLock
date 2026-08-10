@@ -9,7 +9,7 @@ import {
   Platform,
   NativeModules,
 } from 'react-native';
-import { spacing } from '../theme';
+import { spacing, fonts } from '../theme';
 
 import {
   getCurrentUserProfile,
@@ -269,6 +269,7 @@ const styles = StyleSheet.create({
     marginRight: spacing.sm,
   },
   brandName: {
+    fontFamily: fonts.bold,
     color: '#FFFFFF',
     fontSize: 22,
     fontWeight: '700',
@@ -283,11 +284,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   greetingTitle: {
+    fontFamily: fonts.bold,
     color: '#FFFFFF',
     fontSize: 24,
     fontWeight: '700',
   },
   greetingSubtitle: {
+    fontFamily: fonts.regular,
     color: '#8B949E',
     fontSize: 14,
     marginTop: 6,
@@ -307,6 +310,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   activeBadge: {
+    fontFamily: fonts.bold,
     color: '#4ECCA3',
     fontSize: 12,
     fontWeight: '800',
@@ -319,12 +323,14 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   activeBannerTitle: {
+    fontFamily: fonts.bold,
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
     marginBottom: 4,
   },
   activeBannerSub: {
+    fontFamily: fonts.regular,
     color: '#8B949E',
     fontSize: 13,
     marginBottom: spacing.md,
@@ -336,6 +342,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   viewSessionBtnText: {
+    fontFamily: fonts.bold,
     color: '#0D1117',
     fontSize: 14,
     fontWeight: '700',
@@ -367,18 +374,21 @@ const styles = StyleSheet.create({
     marginRight: 4,
   },
   kpiLabelGreen: {
+    fontFamily: fonts.bold,
     color: '#4ECCA3',
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 0.5,
   },
   kpiLabelOrange: {
+    fontFamily: fonts.bold,
     color: '#F59E0B',
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 0.5,
   },
   kpiValue: {
+    fontFamily: fonts.bold,
     color: '#FFFFFF',
     fontSize: 22,
     fontWeight: '700',
@@ -405,6 +415,7 @@ const styles = StyleSheet.create({
     marginRight: spacing.xs + 2,
   },
   ctaText: {
+    fontFamily: fonts.bold,
     color: '#C3C7F4',
     fontSize: 16,
     fontWeight: '700',
@@ -416,6 +427,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   sectionTitle: {
+    fontFamily: fonts.bold,
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '700',
@@ -433,12 +445,14 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   emptyTitle: {
+    fontFamily: fonts.bold,
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
     marginBottom: 4,
   },
   emptySub: {
+    fontFamily: fonts.regular,
     color: '#8B949E',
     fontSize: 13,
     textAlign: 'center',
@@ -468,21 +482,25 @@ const styles = StyleSheet.create({
     fontSize: 20,
   },
   sessionTitle: {
+    fontFamily: fonts.bold,
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
   },
   sessionTime: {
+    fontFamily: fonts.regular,
     color: '#8B949E',
     fontSize: 13,
     marginTop: 2,
   },
   sessionDuration: {
+    fontFamily: fonts.bold,
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '700',
   },
   sessionPts: {
+    fontFamily: fonts.semiBold,
     fontSize: 13,
     fontWeight: '600',
     marginTop: 2,

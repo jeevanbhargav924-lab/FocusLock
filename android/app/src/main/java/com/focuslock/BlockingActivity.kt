@@ -49,52 +49,144 @@ class BlockingActivity : AppCompatActivity() {
         )
 
         val appName = intent.getStringExtra(EXTRA_BLOCKED_APP_NAME) ?: "This App"
+        val activeSession = FocusSessionManager.getActiveSession(this)
+        val sessionGoal = activeSession?.title.takeIf { !it.isNullOrBlank() } ?: "Deep Focus Session"
+        val randomQuote = MotivationQuotes.getRandomQuote()
 
         // Root Container
         val rootLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(Color.parseColor("#0D1117"))
             gravity = Gravity.CENTER
-            setPadding(48, 64, 48, 64)
+            setPadding(40, 48, 40, 48)
         }
 
-        // Header Icon 🚫
+        // Header Icon 🔒
         val iconTv = TextView(this).apply {
-            text = "🚫"
-            textSize = 48f
+            text = "🔒"
+            textSize = 44f
             gravity = Gravity.CENTER
         }
         rootLayout.addView(iconTv)
 
-        // Focus Mode Active Title
+        // Access Restricted Title
         val titleTv = TextView(this).apply {
-            text = "Focus Mode Active"
-            setTextColor(Color.WHITE)
-            textSize = 26f
+            text = "ACCESS RESTRICTED"
+            setTextColor(Color.parseColor("#FF6B6B"))
+            textSize = 14f
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
-            setPadding(0, 24, 0, 12)
+            letterSpacing = 0.1f
+            setPadding(0, 16, 0, 4)
         }
         rootLayout.addView(titleTv)
 
         // App Blocked Subtitle
         val subTv = TextView(this).apply {
-            text = "$appName is blocked."
-            setTextColor(Color.parseColor("#F59E0B"))
-            textSize = 18f
+            text = "$appName is Locked"
+            setTextColor(Color.WHITE)
+            textSize = 24f
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
-            setPadding(0, 0, 0, 36)
+            setPadding(0, 0, 0, 20)
         }
         rootLayout.addView(subTv)
 
+        // Card 1: Your Focus Goal Card
+        val goalCardDrawable = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = 24f
+            setColor(Color.parseColor("#161B22"))
+            setStroke(2, Color.parseColor("#30363D"))
+        }
+
+        val goalCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = goalCardDrawable
+            setPadding(28, 20, 28, 20)
+            gravity = Gravity.CENTER
+        }
+
+        val goalHeaderTv = TextView(this).apply {
+            text = "🎯 YOUR FOCUS GOAL"
+            setTextColor(Color.parseColor("#5E6AD2"))
+            textSize = 12f
+            typeface = Typeface.DEFAULT_BOLD
+            letterSpacing = 0.08f
+            gravity = Gravity.CENTER
+        }
+        goalCard.addView(goalHeaderTv)
+
+        val goalTitleTv = TextView(this).apply {
+            text = sessionGoal
+            setTextColor(Color.WHITE)
+            textSize = 18f
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setPadding(0, 6, 0, 0)
+        }
+        goalCard.addView(goalTitleTv)
+
+        val goalCardParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply {
+            setMargins(0, 0, 0, 16)
+        }
+        rootLayout.addView(goalCard, goalCardParams)
+
+        // Card 2: Motivation / Quest Card
+        val motivationCardDrawable = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = 24f
+            setColor(Color.parseColor("#1C2128"))
+            setStroke(2, Color.parseColor("#5E6AD2"))
+        }
+
+        val motivationCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = motivationCardDrawable
+            setPadding(28, 20, 28, 20)
+            gravity = Gravity.CENTER
+        }
+
+        val motivationHeaderTv = TextView(this).apply {
+            text = "💡 WHY IT'S BLOCKED"
+            setTextColor(Color.parseColor("#F59E0B"))
+            textSize = 12f
+            typeface = Typeface.DEFAULT_BOLD
+            letterSpacing = 0.08f
+            gravity = Gravity.CENTER
+        }
+        motivationCard.addView(motivationHeaderTv)
+
+        val quoteTv = TextView(this).apply {
+            text = "\"$randomQuote\""
+            setTextColor(Color.parseColor("#D0D7DE"))
+            textSize = 14f
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.ITALIC)
+            gravity = Gravity.CENTER
+            setPadding(0, 8, 0, 0)
+        }
+        motivationCard.addView(quoteTv)
+
+        val motivationCardParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply {
+            setMargins(0, 0, 0, 24)
+        }
+        rootLayout.addView(motivationCard, motivationCardParams)
+
         // Remaining Time Header
         val remHeaderTv = TextView(this).apply {
-            text = "Remaining Time:"
+            text = "REMAINING SESSION TIME"
             setTextColor(Color.parseColor("#8B949E"))
-            textSize = 14f
+            textSize = 11f
+            typeface = Typeface.DEFAULT_BOLD
+            letterSpacing = 0.08f
             gravity = Gravity.CENTER
-            setPadding(0, 12, 0, 4)
+            setPadding(0, 0, 0, 4)
         }
         rootLayout.addView(remHeaderTv)
 
@@ -102,22 +194,12 @@ class BlockingActivity : AppCompatActivity() {
         remainingTimeTv = TextView(this).apply {
             text = FocusSessionManager.getRemainingTimeFormatted(this@BlockingActivity)
             setTextColor(Color.WHITE)
-            textSize = 36f
+            textSize = 32f
             typeface = Typeface.MONOSPACE
             gravity = Gravity.CENTER
-            setPadding(0, 0, 0, 36)
+            setPadding(0, 0, 0, 24)
         }
         rootLayout.addView(remainingTimeTv)
-
-        // Stay Focused Message
-        val messageTv = TextView(this).apply {
-            text = "Stay focused."
-            setTextColor(Color.parseColor("#8B949E"))
-            textSize = 16f
-            gravity = Gravity.CENTER
-            setPadding(0, 0, 0, 48)
-        }
-        rootLayout.addView(messageTv)
 
         // Dismiss Button [I'm Ready to Focus]
         val buttonDrawable = GradientDrawable().apply {
@@ -141,7 +223,7 @@ class BlockingActivity : AppCompatActivity() {
             LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.WRAP_CONTENT
         ).apply {
-            setMargins(32, 0, 32, 0)
+            setMargins(16, 0, 16, 0)
         }
         rootLayout.addView(button, btnParams)
 
@@ -173,3 +255,4 @@ class BlockingActivity : AppCompatActivity() {
         goHomeAndFinish()
     }
 }
+

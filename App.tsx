@@ -51,6 +51,7 @@ function MainAppController(): React.JSX.Element {
   // Session & Protection States
   const [isSessionActive, setIsSessionActive] = useState<boolean>(false);
   const [sessionMinutes, setSessionMinutes] = useState<number>(60);
+  const [activeSessionTitle, setActiveSessionTitle] = useState<string>('Deep Focus Session');
   const [remainingTimeText, setRemainingTimeText] = useState<string>('00:00:00');
   const [allowedAppsCount, setAllowedAppsCount] = useState<number>(3);
   const [customBlockedPkgs, setCustomBlockedPkgs] = useState<string[]>([]);
@@ -101,6 +102,9 @@ function MainAppController(): React.JSX.Element {
         const session = await NativeModules.PermissionModule.getActiveSession();
         if (session && session.isActive) {
           setIsSessionActive(true);
+          if (session.title) {
+            setActiveSessionTitle(session.title);
+          }
           const time = await NativeModules.PermissionModule.getRemainingTime();
           setRemainingTimeText(time || '00:00:00');
         } else {
@@ -190,7 +194,12 @@ function MainAppController(): React.JSX.Element {
     setShowAllowedApps(true);
   };
 
-  const handleStartActiveSession = async (minutes: number, strictMode: boolean, sessionPin: string = '') => {
+  const handleStartActiveSession = async (
+    minutes: number,
+    strictMode: boolean,
+    sessionPin: string = '',
+    sessionTitle: string = 'Deep Focus Session'
+  ) => {
     const hasPerms = await checkRequiredPermissionsGranted();
     if (!hasPerms) {
       Toast.warning(
@@ -203,7 +212,9 @@ function MainAppController(): React.JSX.Element {
       return;
     }
 
+    const finalTitle = sessionTitle.trim() || 'Deep Focus Session';
     setSessionMinutes(minutes);
+    setActiveSessionTitle(finalTitle);
     setIsSessionActive(true);
     setShowCreateSession(false);
     setShowAllowedApps(false);
@@ -228,7 +239,7 @@ function MainAppController(): React.JSX.Element {
         const finalBlocked = customBlockedPkgs.length > 0 ? customBlockedPkgs : defaultBlocked;
 
         await NativeModules.PermissionModule.startFocusSession(
-          'Deep Focus Session',
+          finalTitle,
           minutes,
           strictMode,
           finalBlocked,
@@ -474,6 +485,8 @@ function MainAppController(): React.JSX.Element {
         <View style={styles.fullModalContainer}>
           <BlockedOverlayScreen
             appName="Instagram"
+            sessionTitle={activeSessionTitle}
+            remainingTimeText={remainingTimeText}
             onDismiss={() => setShowBlockedOverlay(false)}
           />
         </View>
