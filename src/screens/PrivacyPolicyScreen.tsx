@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   SafeAreaView,
 } from 'react-native';
-import { spacing, fonts } from '../theme';
+import { spacing, fonts, colors } from '../theme';
 import { BackIcon } from '../utils/Icons';
 
 interface PrivacyPolicyScreenProps {
@@ -195,15 +195,15 @@ export const PrivacyPolicyScreen: React.FC<PrivacyPolicyScreenProps> = ({ onBack
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#0D1117',
+    backgroundColor: colors.background,
   },
   container: {
     flex: 1,
-    backgroundColor: '#0D1117',
+    backgroundColor: colors.background,
   },
   topBar: {
     flexDirection: 'row',
-    paddingTop:50,
+    paddingTop: 50,
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
@@ -212,7 +212,10 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(255, 255, 255, 0.05)',
   },
   backBtn: {
-    padding: spacing.xs,
+    padding: 12,
+    borderColor: '#6B7280',
+    borderWidth: 1,
+    borderRadius: 50,
   },
   topTitle: {
     fontFamily: fonts.bold,

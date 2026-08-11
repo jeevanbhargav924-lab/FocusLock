@@ -9,7 +9,7 @@ import {
   Modal,
   TextInput,
 } from 'react-native';
-import { spacing } from '../theme';
+import { colors, spacing } from '../theme';
 import { getCurrentUserProfile, saveUserProfile, getUserStats, getHistorySessions } from '../services/database';
 import { Toast } from '../components/Toast';
 import { SettingsIcon } from '../utils/Icons';
@@ -227,7 +227,7 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D1117',
+    backgroundColor: colors.background,
   },
   content: {
     paddingHorizontal: spacing.lg,

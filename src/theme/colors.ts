@@ -1,6 +1,6 @@
 export const colors = {
   // Dark canvas background
-  background: '#0B0D10',
+  background: '#000',
 
   // Surface & Neutral
   surface: '#13161B',

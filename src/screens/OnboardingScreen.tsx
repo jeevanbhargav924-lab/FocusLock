@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
   heroCard: {
     height: 260,
     width: '100%',
-    marginTop:60,
+    marginTop: 60,
     borderRadius: radius.xl,
     backgroundColor: colors.surface,
     borderWidth: 1,
@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
   },
   dotFilled: {
     height: '100%',
-    backgroundColor: colors.primaryLight,
+    backgroundColor: '#A855F7',
     borderRadius: 2,
   },
   title: {
@@ -248,5 +248,6 @@ const styles = StyleSheet.create({
   actionBtn: {
     marginBottom: spacing.lg,
     width: '100%',
+    backgroundColor: '#A855F7',
   },
 });

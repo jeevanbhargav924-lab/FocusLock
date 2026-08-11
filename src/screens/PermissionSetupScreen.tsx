@@ -10,7 +10,7 @@ import {
   Switch,
   TouchableOpacity,
 } from 'react-native';
-import { spacing, radius } from '../theme';
+import { spacing, radius, colors } from '../theme';
 import { request, check, PERMISSIONS, RESULTS } from 'react-native-permissions';
 
 interface PermissionSetupScreenProps {
@@ -306,17 +306,17 @@ export const PermissionSetupScreen: React.FC<PermissionSetupScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D1117',
+    backgroundColor: colors.background,
   },
   content: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
+    paddingTop: spacing.xl,
     paddingBottom: spacing.xl,
   },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.xl,
+    marginBottom: spacing.lg,
   },
   topShieldBadge: {
     width: 24,
@@ -397,13 +397,13 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm + 2,
   },
   allowButton: {
-    backgroundColor: '#5E6AD2',
+    backgroundColor: '#A855F7',
     paddingHorizontal: spacing.md + 4,
     paddingVertical: spacing.xs + 3,
     borderRadius: radius.pill,
   },
   grantedButton: {
-    backgroundColor: '#238636',
+    backgroundColor: '#00E676',
   },
   allowButtonText: {
     color: '#FFFFFF',
@@ -429,9 +429,9 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.05)',
   },
   continueButtonActive: {
-    backgroundColor: '#238636',
-    borderColor: '#2EA043',
-    shadowColor: '#238636',
+    backgroundColor: '#A855F7',
+    borderColor: '#ad6ee8ff',
+    shadowColor: '#ae74e4ff',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 10,

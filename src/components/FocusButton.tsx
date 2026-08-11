@@ -115,7 +115,7 @@ export const FocusButton: React.FC<FocusButtonProps> = ({
           <Text
             style={[
               styles.buttonText,
-              { color: getTextColor() },
+              { color: "#fff" },
               icon ? { marginLeft: spacing.xs } : null,
               textStyle,
             ]}>
@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
   buttonText: {
     fontFamily: fonts.bold,
     fontSize: 16,
-    fontWeight: '700',
+    color:"#fff",
     letterSpacing: 0.2,
   },
   disabled: {

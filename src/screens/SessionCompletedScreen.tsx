@@ -15,9 +15,15 @@ import {
   BlockedIcon,
   TrendingUpIcon,
   PlayIcon,
+  HourglassIcon,
 } from '../utils/Icons';
+import { colors } from '../theme';
 
 interface SessionCompletedScreenProps {
+  isManualEnd?: boolean;
+  plannedMinutes?: number;
+  completedMinutes?: number;
+  remainingMinutes?: number;
   durationMinutes?: number;
   blockedAttempts?: number;
   timeSavedMinutes?: number;
@@ -26,13 +32,20 @@ interface SessionCompletedScreenProps {
 }
 
 export const SessionCompletedScreen: React.FC<SessionCompletedScreenProps> = ({
-  durationMinutes = 90,
-  blockedAttempts = 8,
-  timeSavedMinutes = 22,
+  isManualEnd = false,
+  plannedMinutes,
+  completedMinutes,
+  remainingMinutes = 0,
+  durationMinutes = 25,
+  blockedAttempts = 0,
+  timeSavedMinutes = 0,
   onStartAnotherSession,
   onReturnHome,
 }) => {
-  // Breathing animation refs for the top checkmark icon background
+  const actualCompletedMins = completedMinutes ?? durationMinutes;
+  const actualPlannedMins = plannedMinutes ?? durationMinutes;
+
+  // Breathing animation refs for the top icon background
   const breatheAnim = useRef(new Animated.Value(1)).current;
   const glowOpacity = useRef(new Animated.Value(0.35)).current;
 
@@ -88,59 +101,76 @@ export const SessionCompletedScreen: React.FC<SessionCompletedScreenProps> = ({
         style={styles.scrollView}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}>
-        {/* Breathing Animated Checkmark Icon Header */}
+        {/* Breathing Animated Header Icon */}
         <View style={styles.iconHeaderContainer}>
           <Animated.View
             style={[
               styles.breathingGlowRing,
+              isManualEnd && styles.amberGlowRing,
               {
                 transform: [{ scale: breatheAnim }],
                 opacity: glowOpacity,
               },
             ]}
           />
-          <View style={styles.checkCircle}>
-            <CheckmarkIcon color="#0D1117" width={28} height={28} />
+          <View style={[styles.checkCircle, isManualEnd && styles.amberCircle]}>
+            {isManualEnd ? (
+              <StopwatchIcon color="#FFFFFF" width={28} height={28} />
+            ) : (
+              <CheckmarkIcon color={colors.background} width={28} height={28} />
+            )}
           </View>
         </View>
 
         {/* Title & Subtitle */}
-        <Text style={styles.titleText}>Congratulations!</Text>
+        <Text style={styles.titleText}>
+          {isManualEnd ? 'We Respect Your Focus! 🛡️' : 'Congratulations! 🎉'}
+        </Text>
         <Text style={styles.subtitleText}>
-          You've successfully completed your focus session. Outstanding discipline.
+          {isManualEnd
+            ? 'You ended this session early. Every step counts — building deep focus takes practice! Keep going!'
+            : "You've successfully completed your focus session. Outstanding discipline."}
         </Text>
 
         {/* Metrics Cards */}
         <View style={styles.cardsContainer}>
-          {/* Card 1: Focus Time */}
+          {/* Card 1: Completed Time */}
           <View style={styles.metricCard}>
             <View style={styles.cardHeaderRow}>
               <StopwatchIcon color="#8B949E" width={18} height={18} />
-              <Text style={styles.cardHeaderLabel}>FOCUS TIME</Text>
+              <Text style={styles.cardHeaderLabel}>
+                {isManualEnd ? 'TIME COMPLETED' : 'FOCUS TIME'}
+              </Text>
             </View>
             <Text style={styles.cardPrimaryValue}>
-              {formatFocusTime(durationMinutes)}
+              {formatFocusTime(actualCompletedMins)}
             </Text>
           </View>
 
-          {/* Card 2: Blocked Attempts */}
+          {/* Card 2: Remaining Time or Time Saved */}
+          <View style={styles.metricCard}>
+            <View style={styles.cardHeaderRow}>
+              {isManualEnd ? (
+                <HourglassIcon color="#E5A84B" width={18} height={18} />
+              ) : (
+                <TrendingUpIcon color="#4ECCA3" width={18} height={18} />
+              )}
+              <Text style={styles.cardHeaderLabel}>
+                {isManualEnd ? 'TIME REMAINING' : 'TIME SAVED'}
+              </Text>
+            </View>
+            <Text style={[styles.cardPrimaryValue, { color: isManualEnd ? '#E5A84B' : '#4ECCA3' }]}>
+              {isManualEnd ? formatFocusTime(remainingMinutes) : `${timeSavedMinutes || Math.round(actualPlannedMins * 0.8)}m`}
+            </Text>
+          </View>
+
+          {/* Card 3: Blocked Attempts */}
           <View style={styles.metricCard}>
             <View style={styles.cardHeaderRow}>
               <BlockedIcon color="#F87171" width={18} height={18} />
-              <Text style={styles.cardHeaderLabel}>Blocked Attempts</Text>
+              <Text style={styles.cardHeaderLabel}>BLOCKED ATTEMPTS</Text>
             </View>
             <Text style={styles.cardPrimaryValue}>{blockedAttempts}</Text>
-          </View>
-
-          {/* Card 3: Time Saved */}
-          <View style={styles.metricCard}>
-            <View style={styles.cardHeaderRow}>
-              <TrendingUpIcon color="#4ECCA3" width={18} height={18} />
-              <Text style={styles.cardHeaderLabel}>Time Saved</Text>
-            </View>
-            <Text style={[styles.cardPrimaryValue, { color: '#4ECCA3' }]}>
-              {timeSavedMinutes}m
-            </Text>
           </View>
         </View>
 
@@ -151,7 +181,9 @@ export const SessionCompletedScreen: React.FC<SessionCompletedScreenProps> = ({
             style={styles.primaryButton}
             onPress={onStartAnotherSession || onReturnHome}>
             <PlayIcon color="#1E1B4B" width={16} height={16} />
-            <Text style={styles.primaryButtonText}>Start Another Session</Text>
+            <Text style={styles.primaryButtonText}>
+              {isManualEnd ? 'Start New Session' : 'Start Another Session'}
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -169,7 +201,7 @@ export const SessionCompletedScreen: React.FC<SessionCompletedScreenProps> = ({
 const styles = StyleSheet.create({
   safeContainer: {
     flex: 1,
-    backgroundColor: '#0D1117',
+    backgroundColor: colors.background,
   },
   scrollView: {
     flex: 1,
@@ -199,6 +231,10 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: 'rgba(78, 204, 163, 0.4)',
   },
+  amberGlowRing: {
+    backgroundColor: 'rgba(229, 168, 75, 0.25)',
+    borderColor: 'rgba(229, 168, 75, 0.4)',
+  },
   checkCircle: {
     width: 64,
     height: 64,
@@ -211,6 +247,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.6,
     shadowRadius: 12,
     elevation: 8,
+  },
+  amberCircle: {
+    backgroundColor: '#E5A84B',
+    shadowColor: '#E5A84B',
   },
 
   /* Typography */

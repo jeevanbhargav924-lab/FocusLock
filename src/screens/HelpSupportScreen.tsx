@@ -208,13 +208,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
-    paddingTop: 30,
+    paddingTop: 40,
     paddingBottom: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
   backBtn: {
-    padding: spacing.xs,
+    padding: 12,
+    borderColor: '#6B7280',
+    borderWidth: 1,
+    borderRadius: 50,
   },
   topTitle: {
     color: colors.textPrimary,

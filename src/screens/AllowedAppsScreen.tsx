@@ -12,7 +12,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { spacing, colors } from '../theme';
-import { BackIcon, SettingsIcon } from '../utils/Icons';
+import { BackIcon} from '../utils/Icons';
 
 export interface AppItem {
   id: string;
@@ -49,17 +49,24 @@ export const AllowedAppsScreen: React.FC<AllowedAppsScreenProps> = ({
 
   useEffect(() => {
     let isMounted = true;
-    const timer = setTimeout(() => {
-      if (isMounted) setLoading(false);
-    }, 1000);
 
-    loadRealInstalledApps().finally(() => {
-      if (isMounted) setLoading(false);
-    });
+    const fetchApps = async () => {
+      setLoading(true);
+      try {
+        await loadRealInstalledApps();
+      } catch (e) {
+        console.warn('Error fetching installed apps:', e);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchApps();
 
     return () => {
       isMounted = false;
-      clearTimeout(timer);
     };
   }, []);
 
@@ -83,11 +90,7 @@ export const AllowedAppsScreen: React.FC<AllowedAppsScreenProps> = ({
         }
       } catch (e) {
         console.warn('Error loading installed apps:', e);
-      } finally {
-        setLoading(false);
       }
-    } else {
-      setLoading(false);
     }
   };
 
@@ -432,7 +435,7 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
   },
   saveBtn: {
-    backgroundColor: colors.primary,
+    backgroundColor: '#A855F7',
     borderRadius: 16,
     height: 52,
     alignItems: 'center',

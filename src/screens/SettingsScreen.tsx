@@ -12,7 +12,7 @@ import {
   Platform,
   Modal,
 } from 'react-native';
-import { spacing, fonts } from '../theme';
+import { spacing, fonts, colors } from '../theme';
 import { PasscodeModal } from '../components/PasscodeModal';
 import { PrivacyPolicyScreen } from './PrivacyPolicyScreen';
 import { TermsOfUseScreen } from './TermsOfUseScreen';
@@ -20,7 +20,7 @@ import { HelpSupportScreen } from './HelpSupportScreen';
 import { AboutAppScreen } from './AboutAppScreen';
 
 import { Toast } from '../components/Toast';
-import { AboutIcon, EmergencyLimitIcon, EmergencyPinIcon, HelpAndSupportIcon, PrivacyPolicyIcon, SettingsIcon } from '../utils/Icons';
+import { AboutIcon, EmergencyLimitIcon, EmergencyPinIcon, HelpAndSupportIcon, PrivacyPolicyIcon, SettingsIcon, TermAndConditionIcon } from '../utils/Icons';
 
 interface SettingsScreenProps {
   onBack?: () => void;
@@ -39,6 +39,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   // const [biometricUnlock, setBiometricUnlock] = useState<boolean>(true);
   const [selectedLanguage, setSelectedLanguage] = useState<string>('English');
   const [dailyLimit, setDailyLimit] = useState<number>(5);
+  const [dailyRemaining, setDailyRemaining] = useState<number>(5);
   const [isLimitLocked, setIsLimitLocked] = useState<boolean>(false);
   const [showSupportModal, setShowSupportModal] = useState<boolean>(false);
   const [showAboutModal, setShowAboutModal] = useState<boolean>(false);
@@ -53,6 +54,13 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
         NativeModules.PermissionModule.getMaxDailyChanges()
           .then((max: number) => {
             setDailyLimit(max);
+          })
+          .catch(() => {});
+      }
+      if (NativeModules.PermissionModule.getDailyChangesRemaining) {
+        NativeModules.PermissionModule.getDailyChangesRemaining()
+          .then((rem: number) => {
+            setDailyRemaining(rem);
           })
           .catch(() => {});
       }
@@ -160,46 +168,52 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   // };
 
   const renderLimitLabel = () => {
-    let text = `${dailyLimit} / Day`;
-    if (dailyLimit === 0) text = '0 (Strict 0 Limits)';
-    if (dailyLimit === -1) text = 'No Limit';
+    if (dailyLimit === -1) return isLimitLocked ? '🔒 Locked (No Limit)' : 'No Limit';
+    if (dailyLimit === 0) return isLimitLocked ? '🔒 Locked (0 Limits Allowed)' : '0 (Strict 0 Limits)';
+    const text = `${dailyLimit} / Day (${dailyRemaining} left today)`;
     return isLimitLocked ? `🔒 Locked (${text})` : text;
   };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Top Header Bar */}
+      {/* Top Header Bar with App Logo */}
       <View style={styles.topBar}>
-        <View style={styles.brandRow}>
+        <View style={styles.headerLeftGroup}>
           <Image
             source={require('../../assets/images/appIcon.png')}
             style={styles.headerAvatar}
           />
-          <Text style={styles.brandName}>FocusLock</Text>
+          <View>
+            <Text style={styles.brandTitle}>Settings</Text>
+            <Text style={styles.brandSubtitle}>Manage your app preferences and security.</Text>
+          </View>
         </View>
       </View>
 
-      {/* Main Screen Title */}
-      <Text style={styles.pageTitle}>Settings</Text>
-
-      {/* SECURITY & RULES SECTION */}
+      {/* SECURITY & PROTECTION SECTION */}
       <Text style={styles.sectionHeaderLabel}>SECURITY & PROTECTION</Text>
       <View style={styles.groupCard}>
         {/* Daily Emergency Limit */}
         <TouchableOpacity
           activeOpacity={0.7}
           style={styles.settingRow}
-          onPress={handleChangeDailyLimit}>
+          onPress={handleChangeDailyLimit}
+        >
           <View style={styles.settingLeft}>
-            <Text style={styles.settingIcon}><EmergencyLimitIcon/></Text>
-            <Text style={styles.settingLabel}>Daily Emergency Limit</Text>
+            <View style={[styles.settingIconBadge, { backgroundColor: '#24152F' }]}>
+              <EmergencyLimitIcon color="#C084FC" width={20} height={20} />
+            </View>
+            <View>
+              <Text style={styles.settingLabel}>Daily Emergency Limit</Text>
+              <Text style={styles.lockedValText}>
+                {isLimitLocked ? `🔒 Locked (${dailyLimit} / Day)` : `${dailyLimit} / Day`}
+              </Text>
+              <Text style={styles.subtextLabel}>
+                {dailyRemaining} left today
+              </Text>
+            </View>
           </View>
-          <View style={styles.settingRightVal}>
-            <Text style={[styles.valText, isLimitLocked && styles.lockedText]}>
-              {renderLimitLabel()}
-            </Text>
-            <Text style={styles.chevron}>›</Text>
-          </View>
+          <Text style={styles.chevron}>›</Text>
         </TouchableOpacity>
         <View style={styles.divider} />
 
@@ -207,10 +221,16 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
         <TouchableOpacity
           activeOpacity={0.7}
           style={styles.settingRow}
-          onPress={handleEmergencyUnlock}>
+          onPress={handleEmergencyUnlock}
+        >
           <View style={styles.settingLeft}>
-            <Text style={styles.settingIcon}><EmergencyPinIcon/></Text>
-            <Text style={styles.settingLabel}>Emergency PIN Unlock</Text>
+            <View style={[styles.settingIconBadge, { backgroundColor: '#151C2E' }]}>
+              <EmergencyPinIcon color="#60A5FA" width={20} height={20} />
+            </View>
+            <View>
+              <Text style={styles.settingLabel}>Emergency PIN Unlock</Text>
+              <Text style={styles.subtextLabel}>Set or change your PIN</Text>
+            </View>
           </View>
           <Text style={styles.chevron}>›</Text>
         </TouchableOpacity>
@@ -223,27 +243,37 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
         <TouchableOpacity
           activeOpacity={0.7}
           style={styles.settingRow}
-          onPress={handleHelpSupport}>
+          onPress={handleHelpSupport}
+        >
           <View style={styles.settingLeft}>
-            <Text style={styles.settingIcon}><HelpAndSupportIcon/></Text>
-            <Text style={styles.settingLabel}>Help & Support</Text>
+            <View style={[styles.settingIconBadge, { backgroundColor: '#102E23' }]}>
+              <HelpAndSupportIcon color="#10B981" width={20} height={20} />
+            </View>
+            <View>
+              <Text style={styles.settingLabel}>Help & Support</Text>
+              <Text style={styles.subtextLabel}>Get help and answers</Text>
+            </View>
           </View>
           <Text style={styles.chevron}>›</Text>
         </TouchableOpacity>
         <View style={styles.divider} />
 
-        {/* About */}
+        {/* About FocusLock */}
         <TouchableOpacity
           activeOpacity={0.7}
           style={styles.settingRow}
-          onPress={handleAbout}>
+          onPress={handleAbout}
+        >
           <View style={styles.settingLeft}>
-            <Text style={styles.settingIcon}><AboutIcon/></Text>
-            <Text style={styles.settingLabel}>About FocusLock</Text>
+            <View style={[styles.settingIconBadge, { backgroundColor: '#122238' }]}>
+              <AboutIcon color="#3B82F6" width={20} height={20} />
+            </View>
+            <View>
+              <Text style={styles.settingLabel}>About FocusLock</Text>
+              <Text style={styles.subtextLabel}>Learn more about us</Text>
+            </View>
           </View>
-          <View style={styles.settingRightVal}>
-            <Text style={styles.chevron}>›</Text>
-          </View>
+          <Text style={styles.chevron}>›</Text>
         </TouchableOpacity>
         <View style={styles.divider} />
 
@@ -251,10 +281,16 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
         <TouchableOpacity
           activeOpacity={0.7}
           style={styles.settingRow}
-          onPress={() => setShowPrivacyModal(true)}>
+          onPress={() => setShowPrivacyModal(true)}
+        >
           <View style={styles.settingLeft}>
-            <Text style={styles.settingIcon}><PrivacyPolicyIcon/></Text>
-            <Text style={styles.settingLabel}>Privacy Policy</Text>
+            <View style={[styles.settingIconBadge, { backgroundColor: '#24152F' }]}>
+              <PrivacyPolicyIcon color="#A855F7" width={20} height={20} />
+            </View>
+            <View>
+              <Text style={styles.settingLabel}>Privacy Policy</Text>
+              <Text style={styles.subtextLabel}>How we protect your data</Text>
+            </View>
           </View>
           <Text style={styles.chevron}>›</Text>
         </TouchableOpacity>
@@ -264,16 +300,20 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
         <TouchableOpacity
           activeOpacity={0.7}
           style={styles.settingRow}
-          onPress={() => setShowTermsModal(true)}>
+          onPress={() => setShowTermsModal(true)}
+        >
           <View style={styles.settingLeft}>
-            <Text style={styles.settingIcon}>📄</Text>
-            <Text style={styles.settingLabel}>Terms of Use</Text>
+            <View style={[styles.settingIconBadge, { backgroundColor: '#2B2312' }]}>
+              <TermAndConditionIcon color="#F59E0B" width={20} height={20} />
+            </View>
+            <View>
+              <Text style={styles.settingLabel}>Terms of Use</Text>
+              <Text style={styles.subtextLabel}>Read our terms and conditions</Text>
+            </View>
           </View>
           <Text style={styles.chevron}>›</Text>
         </TouchableOpacity>
       </View>
-
-
 
       {/* Passcode Authorization Modal */}
       <PasscodeModal
@@ -281,7 +321,10 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
         mode={passcodeMode}
         onSuccess={() => {
           setShowPasscodeModal(false);
-          Alert.alert('Emergency Validation Passed', 'Emergency session override unlocked.');
+          Alert.alert(
+            'Emergency Validation Passed',
+            'Emergency session override unlocked.',
+          );
         }}
         onCancel={() => setShowPasscodeModal(false)}
       />
@@ -290,7 +333,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
       <Modal
         visible={showPrivacyModal}
         animationType="slide"
-        onRequestClose={() => setShowPrivacyModal(false)}>
+        onRequestClose={() => setShowPrivacyModal(false)}
+      >
         <PrivacyPolicyScreen onBack={() => setShowPrivacyModal(false)} />
       </Modal>
 
@@ -298,7 +342,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
       <Modal
         visible={showSupportModal}
         animationType="slide"
-        onRequestClose={() => setShowSupportModal(false)}>
+        onRequestClose={() => setShowSupportModal(false)}
+      >
         <HelpSupportScreen onBack={() => setShowSupportModal(false)} />
       </Modal>
 
@@ -306,7 +351,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
       <Modal
         visible={showAboutModal}
         animationType="slide"
-        onRequestClose={() => setShowAboutModal(false)}>
+        onRequestClose={() => setShowAboutModal(false)}
+      >
         <AboutAppScreen
           onBack={() => setShowAboutModal(false)}
           onOpenPrivacyPolicy={() => {
@@ -324,7 +370,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
       <Modal
         visible={showTermsModal}
         animationType="slide"
-        onRequestClose={() => setShowTermsModal(false)}>
+        onRequestClose={() => setShowTermsModal(false)}
+      >
         <TermsOfUseScreen onBack={() => setShowTermsModal(false)} />
       </Modal>
     </ScrollView>
@@ -334,7 +381,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D1117',
+    backgroundColor: colors.background,
   },
   content: {
     paddingHorizontal: spacing.lg,
@@ -345,49 +392,41 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
-  brandRow: {
+  headerLeftGroup: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   headerAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    marginRight: spacing.sm,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    marginRight: 14,
   },
-  brandName: {
+  brandTitle: {
+    fontSize: 18,
     fontFamily: fonts.bold,
-    color: '#FFFFFF',
-    fontSize: 22,
-    fontWeight: '700',
+    color: colors.textPrimary,
+    letterSpacing: -0.3,
   },
-  settingsBtn: {
-    padding: spacing.xs,
-  },
-  gearIcon: {
-    fontSize: 22,
-  },
-  pageTitle: {
-    fontFamily: fonts.bold,
-    color: '#FFFFFF',
-    fontSize: 28,
-    fontWeight: '800',
-    marginBottom: spacing.lg,
+  brandSubtitle: {
+    fontSize: 14,
+    fontFamily: fonts.regular,
+    color: colors.textSecondary,
+    marginTop: 2,
   },
   sectionHeaderLabel: {
     fontFamily: fonts.bold,
     color: '#8B949E',
     fontSize: 11,
-    fontWeight: '700',
     letterSpacing: 0.8,
-    marginBottom: 8,
+    marginBottom: 10,
     marginTop: spacing.md,
   },
   groupCard: {
-    backgroundColor: '#161B22',
-    borderRadius: 16,
+    backgroundColor: '#13161B',
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.05)',
     marginBottom: spacing.md,
@@ -397,39 +436,37 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
   settingLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 14,
   },
-  settingIcon: {
-    fontSize: 18,
-    marginRight: spacing.md,
-    width: 24,
-    textAlign: 'center',
+  settingIconBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   settingLabel: {
-    fontFamily: fonts.semiBold,
+    fontFamily: fonts.bold,
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '600',
   },
-  settingRightVal: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+  lockedValText: {
+    fontFamily: fonts.bold,
+    color: '#EF4444',
+    fontSize: 13,
+    marginTop: 1,
   },
-  valText: {
+  subtextLabel: {
     fontFamily: fonts.regular,
     color: '#8B949E',
-    fontSize: 13,
-  },
-  lockedText: {
-    fontFamily: fonts.bold,
-    color: '#F85149',
-    fontWeight: '700',
+    fontSize: 12,
+    marginTop: 1,
   },
   chevron: {
     color: '#8B949E',

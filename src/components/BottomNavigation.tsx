@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { FocusIcon, HistoryIcon, HomeIcon, SettingsIcon, StatisticsIcon } from '../utils/Icons';
+import { colors, fonts } from '../theme';
 
 export type TabKey = 'home' | 'history' | 'focus' | 'stats' | 'settings';
 
@@ -55,7 +56,8 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
                 <View style={styles.middleGlow}>
                   <View style={styles.centerFabCircle}>
                     {React.cloneElement(tab.icon as React.ReactElement<any>, {
-                      color: '#1E1B4B',
+                      color: colors.onSecondary,
+                      fill: colors.onSecondary,
                       width: 26,
                       height: 26,
                     })}
@@ -66,32 +68,31 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
           }
 
           // Regular Tabs (Home, History, Stats, Settings)
-          const iconColor = isActive ? '#4ECCA3' : '#6E7681';
+          const activeColor = '#A855F7';
+          const iconColor = isActive ? activeColor : colors.textMuted;
 
           return (
             <TouchableOpacity
               key={tab.key}
               activeOpacity={0.7}
               onPress={() => handleTabSelect(tab.key)}
-              style={[
-                styles.tabItem,
-                isActive && styles.activeTabPill,
-              ]}>
+              style={styles.tabItem}>
               {React.cloneElement(tab.icon as React.ReactElement<any>, {
                 color: iconColor,
-                width: 20,
-                height: 20,
+                fill: iconColor,
+                width: 22,
+                height: 22,
               })}
               <Text
                 style={[
                   styles.tabLabel,
                   {
-                    color: isActive ? '#4ECCA3' : '#6E7681',
-                    fontWeight: isActive ? '700' : '500',
+                    color: isActive ? activeColor : colors.textMuted,
                   },
                 ]}>
                 {tab.label}
               </Text>
+              {isActive && <View style={[styles.activeIndicatorLine, { backgroundColor: activeColor, shadowColor: activeColor }]} />}
             </TouchableOpacity>
           );
         })}
@@ -103,24 +104,24 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
 const styles = StyleSheet.create({
   navContainer: {
     position: 'absolute',
-    bottom: 12,
-    left: 16,
-    right: 16,
+    bottom: 14,
+    left: 14,
+    right: 14,
     alignItems: 'center',
   },
   navBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#0F141C',
+    backgroundColor: '#13161B',
     borderRadius: 36,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
+    shadowOpacity: 0.5,
     shadowRadius: 16,
     elevation: 12,
     width: '100%',
@@ -130,47 +131,61 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
     borderRadius: 24,
-    gap: 6,
+    position: 'relative',
+    gap: 4,
   },
-  activeTabPill: {
-    backgroundColor: '#0E3A2F',
-    borderWidth: 1,
-    borderColor: 'rgba(78, 204, 163, 0.3)',
+  activeIndicatorLine: {
+    position: 'absolute',
+    bottom: -2,
+    width: 36,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: '#A855F7',
+    shadowColor: '#A855F7',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    elevation: 4,
   },
   tabLabel: {
     fontSize: 12,
+    fontFamily: fonts.medium,
   },
 
   /* Center Floating FAB Button Styles */
   centerFabContainer: {
-    top: -20,
+    top: -18,
     justifyContent: 'center',
     alignItems: 'center',
     marginHorizontal: 4,
   },
   middleGlow: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: 'rgba(78, 204, 163, 0.25)',
+    width: 62,
+    height: 62,
+    borderRadius: 31,
+    backgroundColor: 'rgba(0, 230, 118, 0.2)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(0, 230, 118, 0.4)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 4,
+    padding: 3,
   },
   centerFabCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#4ECCA3',
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#00E676',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#4ECCA3',
+    shadowColor: '#00E676',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.6,
     shadowRadius: 10,
     elevation: 8,
   },
 });
+
+

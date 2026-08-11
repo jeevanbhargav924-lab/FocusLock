@@ -7,13 +7,15 @@ import { FocusCard } from '../components/FocusCard';
 
 interface ActiveSessionScreenProps {
   initialMinutes?: number;
-  onEndSession: () => void;
+  onEndSession: (elapsedSec: number, remainingSec: number, blockedCount: number) => void;
+  onNaturalCompletion?: () => void;
   onTriggerBlockedAlert: () => void;
 }
 
 export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
   initialMinutes = 25,
   onEndSession,
+  onNaturalCompletion,
   onTriggerBlockedAlert,
 }) => {
   const [sessionTitle, setSessionTitle] = useState<string>('Deep Focus Session');
@@ -38,6 +40,10 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
             const end = session.endTime || (now + duration * 1000);
             const diffSec = Math.max(0, Math.floor((end - now) / 1000));
             setRemainingSeconds(diffSec);
+
+            if (diffSec <= 0 && onNaturalCompletion) {
+              onNaturalCompletion();
+            }
           }
         } catch (e) {
           console.warn('Error fetching active session:', e);
@@ -48,7 +54,7 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
     fetchNativeSession();
     const interval = setInterval(fetchNativeSession, 1000);
     return () => clearInterval(interval);
-  }, [initialMinutes]);
+  }, [initialMinutes, onNaturalCompletion]);
 
   const togglePause = () => {
     setIsRunning(prev => !prev);
@@ -57,6 +63,11 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
   const handleTestBlock = () => {
     setBlockedCount(prev => prev + 1);
     onTriggerBlockedAlert();
+  };
+
+  const handleManualEndTap = () => {
+    const elapsedSec = Math.max(0, totalSeconds - remainingSeconds);
+    onEndSession(elapsedSec, remainingSeconds, blockedCount);
   };
 
   return (
@@ -78,16 +89,11 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
 
       {/* Action Controls */}
       <View style={styles.controlsRow}>
-        <FocusButton
-          title={isRunning ? 'Pause' : 'Resume'}
-          variant={isRunning ? 'outline' : 'primary'}
-          onPress={togglePause}
-          style={styles.controlBtn}
-        />
+        
         <FocusButton
           title="End Session"
           variant="danger"
-          onPress={onEndSession}
+          onPress={handleManualEndTap}
           style={styles.controlBtn}
         />
       </View>
@@ -122,7 +128,7 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D1117',
+    backgroundColor: colors.background,
   },
   content: {
     padding: spacing.containerMargin,

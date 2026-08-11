@@ -206,7 +206,7 @@ class PermissionModule(reactContext: ReactApplicationContext)
     @ReactMethod
     fun stopFocusSession(promise: Promise) {
         try {
-            FocusSessionManager.endSession(reactApplicationContext)
+            FocusSessionManager.endSession(reactApplicationContext, "ended")
             val intent = Intent(reactApplicationContext, FocusForegroundService::class.java).apply {
                 action = FocusForegroundService.ACTION_STOP_SERVICE
             }
@@ -214,6 +214,20 @@ class PermissionModule(reactContext: ReactApplicationContext)
             promise.resolve(true)
         } catch (e: Exception) {
             promise.reject("ERR_STOP_SESSION", e.message)
+        }
+    }
+
+    @ReactMethod
+    fun completeFocusSession(promise: Promise) {
+        try {
+            FocusSessionManager.endSession(reactApplicationContext, "completed")
+            val intent = Intent(reactApplicationContext, FocusForegroundService::class.java).apply {
+                action = FocusForegroundService.ACTION_STOP_SERVICE
+            }
+            reactApplicationContext.stopService(intent)
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.reject("ERR_COMPLETE_SESSION", e.message)
         }
     }
 

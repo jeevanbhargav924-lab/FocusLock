@@ -24,17 +24,17 @@ import { EndSessionCountdownModal } from './src/components/EndSessionCountdownMo
 
 import { FocusHistoryScreen } from './src/screens/FocusHistoryScreen';
 import { StatsScreen } from './src/screens/StatsScreen';
-import { UserProfileScreen } from './src/screens/UserProfileScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
-import { initDatabase, saveSessionRecord, getCurrentUserProfile } from './src/services/database';
+import { initDatabase, saveSessionRecord } from './src/services/database';
 import { Toast, ToastContainer } from './src/components/Toast';
+import { colors } from './src/theme';
 
 type AppFlowStep = 'splash' | 'onboarding' | 'auth' | 'permissions' | 'main';
 
 function App(): React.JSX.Element {
   return (
     <SafeAreaProvider>
-      <StatusBar barStyle="light-content" backgroundColor="#0D1117" />
+      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
       <ToastContainer />
       <MainAppController />
     </SafeAreaProvider>
@@ -72,6 +72,28 @@ function MainAppController(): React.JSX.Element {
 
   // 10-Second Reflection Countdown Modal State
   const [showReflectionCountdown, setShowReflectionCountdown] = useState<boolean>(false);
+
+  // Pending Manual End Data (elapsedSec, remainingSec, blockedCount)
+  const [pendingManualEndData, setPendingManualEndData] = useState<{
+    elapsedSec: number;
+    remainingSec: number;
+    blockedCount: number;
+  }>({ elapsedSec: 0, remainingSec: 0, blockedCount: 0 });
+
+  // Completion Screen Meta state
+  const [completionMeta, setCompletionMeta] = useState<{
+    isManualEnd: boolean;
+    plannedMinutes: number;
+    completedMinutes: number;
+    remainingMinutes: number;
+    blockedAttempts: number;
+  }>({
+    isManualEnd: false,
+    plannedMinutes: 25,
+    completedMinutes: 25,
+    remainingMinutes: 0,
+    blockedAttempts: 0,
+  });
 
   // Check Onboarding & User Authentication State on Mount
   useEffect(() => {
@@ -183,11 +205,7 @@ function MainAppController(): React.JSX.Element {
   };
 
   const handleOpenCreateSession = () => {
-    if (isSessionActive) {
-      setActiveTab('focus');
-    } else {
-      setShowCreateSession(true);
-    }
+    setActiveTab('focus');
   };
 
   const handleOpenAllowedApps = () => {
@@ -261,7 +279,11 @@ function MainAppController(): React.JSX.Element {
         if (remaining <= 0) {
           Toast.warning(
             'Daily Limit Reached! 🚫',
-            'You have used all allowed emergency changes for today. Staying focused is your priority!'
+            'You have used all allowed emergency session ends for today. Stay focused!'
+          );
+          Alert.alert(
+            'Daily Limit Reached 🚫',
+            'You have used all allowed emergency session ends for today. You cannot end this session early. Stay focused!'
           );
           return;
         }
@@ -282,28 +304,105 @@ function MainAppController(): React.JSX.Element {
     }
   };
 
-  const handleEndSessionRequested = () => {
-    setShowReflectionCountdown(true);
+  const handleEndSessionRequested = (
+    elapsedSec: number = 0,
+    remainingSec: number = 0,
+    blockedCount: number = 0
+  ) => {
+    authorizeActionWithDailyLimit(() => {
+      setPendingManualEndData({ elapsedSec, remainingSec, blockedCount });
+      setShowReflectionCountdown(true);
+    });
   };
 
   const handleConfirmEndSession = async () => {
     setShowReflectionCountdown(false);
 
+    const elapsedSec = pendingManualEndData.elapsedSec || 0;
+    const remainingSec = pendingManualEndData.remainingSec || 0;
+    const blockedCount = pendingManualEndData.blockedCount || 0;
+
+    const completedMins = Math.max(1, Math.floor(elapsedSec / 60));
+    const remainingMins = Math.max(0, Math.ceil(remainingSec / 60));
+
     // 1. Record daily limit change on Android
     if (Platform.OS === 'android' && NativeModules.PermissionModule?.recordDailyChange) {
       try {
-        await NativeModules.PermissionModule.recordDailyChange();
+        const success = await NativeModules.PermissionModule.recordDailyChange();
+        if (!success) {
+          Toast.warning(
+            'Daily Limit Reached! 🚫',
+            'You have used all allowed emergency changes for today.'
+          );
+          return;
+        }
       } catch (e) {}
     }
 
-    // 2. Mark active session completed in Native Android SQLite DB & Service
+    // 2. Mark active session stopped in Native Android SQLite DB & Service
     if (Platform.OS === 'android' && NativeModules.PermissionModule?.stopFocusSession) {
       try {
         await NativeModules.PermissionModule.stopFocusSession();
       } catch (e) {}
     }
 
-    // 3. Save completed session record into JS SQLite database & memory store
+    // 3. Save completed session record into JS SQLite database with status 'ended'
+    const now = new Date();
+    const startTimeStr = new Date(now.getTime() - elapsedSec * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const endTimeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const currentUid = isGuest ? 'guest_user' : (auth().currentUser?.uid || 'default_user');
+
+    await saveSessionRecord(
+      {
+        title: activeSessionTitle || 'Deep Focus Session',
+        category: 'coding',
+        start_time: startTimeStr,
+        end_time: endTimeStr,
+        planned_minutes: sessionMinutes,
+        actual_minutes: completedMins,
+        status: 'ended', // Manual end is marked as 'ended'
+        score: Math.round((completedMins / Math.max(1, sessionMinutes)) * 100),
+        blocked_attempts: blockedCount,
+      },
+      currentUid
+    );
+
+    // Display remaining emergency ends toast if applicable
+    if (Platform.OS === 'android' && NativeModules.PermissionModule?.getDailyChangesRemaining) {
+      try {
+        const remaining = await NativeModules.PermissionModule.getDailyChangesRemaining();
+        if (remaining < 9990) {
+          Toast.info('Emergency End Used ⏱', `${remaining} emergency session end(s) remaining today.`);
+        }
+      } catch (e) {}
+    }
+
+    // 4. Configure completionMeta for manual end screen
+    setCompletionMeta({
+      isManualEnd: true,
+      plannedMinutes: sessionMinutes,
+      completedMinutes: completedMins,
+      remainingMinutes: remainingMins,
+      blockedAttempts: blockedCount,
+    });
+
+    setIsSessionActive(false);
+    setShowSessionCompleted(true);
+  };
+
+  const handleNaturalSessionCompletion = async () => {
+    // 1. Mark active session completed in Native Android SQLite DB & Service
+    if (Platform.OS === 'android') {
+      try {
+        if (NativeModules.PermissionModule?.completeFocusSession) {
+          await NativeModules.PermissionModule.completeFocusSession();
+        } else if (NativeModules.PermissionModule?.stopFocusSession) {
+          await NativeModules.PermissionModule.stopFocusSession();
+        }
+      } catch (e) {}
+    }
+
+    // 2. Save completed session record into database with status 'completed'
     const now = new Date();
     const startTimeStr = new Date(now.getTime() - sessionMinutes * 60 * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const endTimeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -311,20 +410,28 @@ function MainAppController(): React.JSX.Element {
 
     await saveSessionRecord(
       {
-        title: 'Deep Focus Session',
+        title: activeSessionTitle || 'Deep Focus Session',
         category: 'coding',
         start_time: startTimeStr,
         end_time: endTimeStr,
         planned_minutes: sessionMinutes,
         actual_minutes: sessionMinutes,
-        status: 'completed',
+        status: 'completed', // Full duration completed naturally
         score: 100,
         blocked_attempts: 0,
       },
       currentUid
     );
 
-    // 4. Update React state to hide live session and open SessionCompletedScreen!
+    // 3. Configure completionMeta for natural completion screen
+    setCompletionMeta({
+      isManualEnd: false,
+      plannedMinutes: sessionMinutes,
+      completedMinutes: sessionMinutes,
+      remainingMinutes: 0,
+      blockedAttempts: 0,
+    });
+
     setIsSessionActive(false);
     setShowSessionCompleted(true);
   };
@@ -371,6 +478,7 @@ function MainAppController(): React.JSX.Element {
             onNavigateToApps={handleOpenAllowedApps}
             isSessionActive={isSessionActive}
             onOpenActiveSession={() => setActiveTab('focus')}
+            onOpenHistory={() => setActiveTab('history')}
             remainingTimeText={remainingTimeText}
           />
         );
@@ -378,6 +486,7 @@ function MainAppController(): React.JSX.Element {
         return isSessionActive ? (
           <ActiveSessionScreen
             onEndSession={handleEndSessionRequested}
+            onNaturalCompletion={handleNaturalSessionCompletion}
             onTriggerBlockedAlert={() => setShowBlockedOverlay(true)}
           />
         ) : (
@@ -388,8 +497,9 @@ function MainAppController(): React.JSX.Element {
             allowedAppsCount={allowedAppsCount}
           />
         );
+
       case 'history':
-        return <FocusHistoryScreen />;
+        return <FocusHistoryScreen onNavigateToStats={() => setActiveTab('stats')} />;
       case 'stats':
         return <StatsScreen />;
       case 'settings':
@@ -406,6 +516,7 @@ function MainAppController(): React.JSX.Element {
             onNavigateToApps={() => setShowAllowedApps(true)}
             isSessionActive={isSessionActive}
             onOpenActiveSession={() => setActiveTab('focus')}
+            onOpenHistory={() => setActiveTab('history')}
             remainingTimeText={remainingTimeText}
           />
         );
@@ -413,7 +524,7 @@ function MainAppController(): React.JSX.Element {
   };
 
   return (
-    <ScreenLayout edges={['top', 'left', 'right']} backgroundColor="#0D1117">
+    <ScreenLayout edges={['top', 'left', 'right']} backgroundColor={colors.background}>
       <View style={styles.mainContent}>{renderTabContent()}</View>
 
       {/* Floating Bottom Navigation Bar */}
@@ -450,9 +561,17 @@ function MainAppController(): React.JSX.Element {
         onRequestClose={() => setShowSessionCompleted(false)}>
         <View style={styles.fullModalContainer}>
           <SessionCompletedScreen
+            isManualEnd={completionMeta.isManualEnd}
+            plannedMinutes={completionMeta.plannedMinutes}
+            completedMinutes={completionMeta.completedMinutes}
+            remainingMinutes={completionMeta.remainingMinutes}
             durationMinutes={sessionMinutes}
-            blockedAttempts={0}
+            blockedAttempts={completionMeta.blockedAttempts}
             timeSavedMinutes={Math.round(sessionMinutes * 0.8)}
+            onStartAnotherSession={() => {
+              setShowSessionCompleted(false);
+              setShowCreateSession(true);
+            }}
             onReturnHome={() => {
               setShowSessionCompleted(false);
               setActiveTab('home');
@@ -523,14 +642,14 @@ function MainAppController(): React.JSX.Element {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D1117',
+    backgroundColor: colors.background,
   },
   mainContent: {
-    flex: 1
+    flex: 1,
   },
   fullModalContainer: {
     flex: 1,
-    backgroundColor: '#0D1117',
+    backgroundColor: colors.background,
   },
 });
 

@@ -9,7 +9,7 @@ export interface SessionRecord {
   end_time: string;
   planned_minutes: number;
   actual_minutes: number;
-  status: 'completed' | 'interrupted';
+  status: 'completed' | 'interrupted' | 'ended';
   score: number; // 0 - 100
   blocked_attempts: number;
   created_at: number; // timestamp
@@ -173,7 +173,7 @@ export const getHistorySessions = async (
             end_time: endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             planned_minutes: item.duration_minutes || 25,
             actual_minutes: item.duration_minutes || 25,
-            status: item.status === 'active' ? 'completed' : (item.status || 'completed'),
+            status: (item.status === 'ended' || item.status === 'interrupted') ? item.status : (item.status === 'active' ? 'completed' : (item.status || 'completed')),
             score: 100,
             blocked_attempts: 0,
             created_at: item.start_time || Date.now(),

@@ -9,7 +9,7 @@ import {
   Platform,
   NativeModules,
 } from 'react-native';
-import { spacing, fonts } from '../theme';
+import { colors, spacing, fonts } from '../theme';
 
 import {
   getCurrentUserProfile,
@@ -17,14 +17,24 @@ import {
   getHistorySessions,
   SessionRecord,
 } from '../services/database';
-import { SettingsIcon } from '../utils/Icons';
+import {
+  CardWaveGreen,
+  CardWaveOrange,
+  WatermarkClock,
+  TargetDartBullseye,
+  CompassTargetIcon,
+  FlameIcon,
+  RightArrowIcon,
+  SparklesIcon,
+} from '../utils/Icons';
 
 interface HomeScreenProps {
-  onStartSession: (minutes: number) => void;
+  onStartSession: (minutes?: number) => void;
   onNavigateToApps: () => void;
   isSessionActive: boolean;
   onOpenSettings?: () => void;
   onOpenActiveSession?: () => void;
+  onOpenHistory?: () => void;
   remainingTimeText?: string;
 }
 
@@ -34,6 +44,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   isSessionActive,
   onOpenSettings,
   onOpenActiveSession,
+  onOpenHistory,
   remainingTimeText = '00:00:00',
 }) => {
   const [activeSessionTitle, setActiveSessionTitle] = useState<string>('Deep Focus Session');
@@ -109,22 +120,23 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   }, []);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+    >
       {/* Top Header Bar */}
       <View style={styles.topBar}>
-        <View style={styles.brandRow}>
-          <Image
-            source={require('../../assets/images/appIcon.png')}
-            style={styles.avatarLogo}
-          />
-          <Text style={styles.brandName}>FocusLock</Text>
+        <Image
+          source={require('../../assets/images/appIcon.png')}
+          style={styles.brandAppIcon}
+        />
+        <View style={styles.headerTextGroup}>
+          <Text style={styles.greetingTitle}>Welcome to FocusLock!</Text>
+          <Text style={styles.greetingSubtitle}>
+            Let's build some momentum today.
+          </Text>
         </View>
-      </View>
-
-      {/* Greeting Section */}
-      <View style={styles.greetingSection}>
-        <Text style={styles.greetingTitle}>Welcome, {userName}</Text>
-        <Text style={styles.greetingSubtitle}>Let's build some momentum today.</Text>
       </View>
 
       {/* Running Session Banner (Shown if session is active) */}
@@ -141,8 +153,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <TouchableOpacity
             activeOpacity={0.85}
             style={styles.viewSessionBtn}
-            onPress={onOpenActiveSession}>
-            <Text style={styles.viewSessionBtnText}>View Running Session →</Text>
+            onPress={onOpenActiveSession}
+          >
+            <Text style={styles.viewSessionBtnText}>
+              View Running Session →
+            </Text>
           </TouchableOpacity>
         </View>
       )}
@@ -152,51 +167,164 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         {/* Today's Focus Card */}
         <View style={styles.kpiCard}>
           <View style={styles.kpiHeaderRow}>
-            <Text style={styles.timerIcon}>⏱</Text>
+            <View style={styles.greenIconCircle}>
+              <CompassTargetIcon
+                color={colors.secondary}
+                width={16}
+                height={16}
+              />
+            </View>
             <Text style={styles.kpiLabelGreen}>TODAY'S FOCUS</Text>
           </View>
           <Text style={styles.kpiValue}>{todayFocusText}</Text>
+          <Text style={styles.kpiSubtext}>Keep it going!</Text>
+          <View style={styles.cardWaveWrap}>
+            <CardWaveGreen />
+          </View>
         </View>
 
         {/* Current Streak Card */}
         <View style={styles.kpiCard}>
           <View style={styles.kpiHeaderRow}>
-            <Text style={styles.fireIcon}>🔥</Text>
-            <Text style={styles.kpiLabelOrange}>CURRENT</Text>
+            <View style={styles.orangeIconCircle}>
+              <FlameIcon color={colors.tertiary} width={16} height={16} />
+            </View>
+            <Text style={styles.kpiLabelOrange}>CURRENT STREAK</Text>
           </View>
-          <Text style={styles.kpiValue}>{streakDays} {streakDays === 1 ? 'Day' : 'Days'}</Text>
+          <Text style={styles.kpiValue}>
+            {streakDays} {streakDays === 1 ? 'Day' : 'Days'}
+          </Text>
+          <Text style={styles.kpiSubtext}>Start your streak</Text>
+          <View style={styles.cardWaveWrap}>
+            <CardWaveOrange />
+          </View>
         </View>
       </View>
 
-      {/* Large CTA Start / View Session Button */}
+      {/* Large CTA Purple Start Session Card Button */}
       <TouchableOpacity
-        activeOpacity={0.85}
-        style={styles.startSessionCta}
+        activeOpacity={0.88}
+        style={styles.startSessionCtaCard}
         onPress={() => {
           if (isSessionActive && onOpenActiveSession) {
             onOpenActiveSession();
           } else {
-            onStartSession(25);
+            onStartSession();
           }
-        }}>
-        <Text style={styles.playTriangle}>{isSessionActive ? '⏱' : '▶'}</Text>
-        <Text style={styles.ctaText}>
-          {isSessionActive ? 'View Active Session' : 'Start Focus Session'}
-        </Text>
+        }}
+      >
+        <View style={styles.outerPlayRing}>
+          <View style={styles.playWhiteCircle}>
+            <Text style={styles.playIconTriangle}>
+              {isSessionActive ? '⏱' : '▶'}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.ctaTextContainer}>
+          <Text style={styles.ctaCardTitle}>
+            {isSessionActive ? 'View Active Session' : 'Start Focus Session'}
+          </Text>
+          <Text style={styles.ctaCardSub}>
+            {isSessionActive
+              ? `Remaining: ${remainingTimeText}`
+              : 'Stay focused. Achieve more.'}
+          </Text>
+        </View>
+
+        <View style={styles.watermarkClockWrap}>
+          <WatermarkClock
+            width={76}
+            height={76}
+            color="rgba(255, 255, 255, 0.22)"
+          />
+        </View>
       </TouchableOpacity>
+
+      {/* Welcome Onboarding Card (Only shown on first install when user has 0 sessions) */}
+      {recentSessions.length === 0 && (
+        <View style={styles.welcomeHelpsCard}>
+          {/* Header Row */}
+          <View style={styles.welcomeHeaderRow}>
+            <SparklesIcon color="#A855F7" width={18} height={18} />
+            <Text style={styles.welcomeHelpsTitle}>FocusLock helps you</Text>
+          </View>
+
+          {/* 3 Features Grid Row */}
+          <View style={styles.welcomeFeaturesRow}>
+            {/* Feature 1 */}
+            <View style={styles.welcomeFeatureCol}>
+              <View style={[styles.welcomeIconBadge, styles.purpleShieldBadge]}>
+                <Text style={{ fontSize: 20 }}>🛡️</Text>
+              </View>
+              <Text style={styles.welcomeFeatureTitle}>Block{'\n'}Distractions</Text>
+            </View>
+
+            <View style={styles.welcomeFeatureDivider} />
+
+            {/* Feature 2 */}
+            <View style={styles.welcomeFeatureCol}>
+              <View style={[styles.welcomeIconBadge, styles.greenTargetBadge]}>
+                <Text style={{ fontSize: 20 }}>🎯</Text>
+              </View>
+              <Text style={styles.welcomeFeatureTitle}>Stay Focused{'\n'}Longer</Text>
+            </View>
+
+            <View style={styles.welcomeFeatureDivider} />
+
+            {/* Feature 3 */}
+            <View style={styles.welcomeFeatureCol}>
+              <View style={[styles.welcomeIconBadge, styles.goldChartBadge]}>
+                <Text style={{ fontSize: 20 }}>📊</Text>
+              </View>
+              <Text style={styles.welcomeFeatureTitle}>Achieve Your{'\n'}Goals</Text>
+            </View>
+          </View>
+
+          {/* Bottom Quote Banner */}
+          <View style={styles.welcomeQuoteRow}>
+            <Text style={styles.quoteMarkText}>“</Text>
+            <Text style={styles.welcomeQuoteText}>
+              Small steps every day lead to big results.
+            </Text>
+            <Text style={styles.quoteMarkText}>”</Text>
+          </View>
+        </View>
+      )}
 
       {/* Recent Sessions Section */}
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Recent Sessions</Text>
+        <TouchableOpacity
+          activeOpacity={0.8}
+          style={styles.viewAllBtnPill}
+          onPress={() => {
+            if (onOpenHistory) {
+              onOpenHistory();
+            } else if (onOpenActiveSession) {
+              onOpenActiveSession();
+            }
+          }}
+        >
+          <Text style={styles.viewAllBtnText}>View All</Text>
+          <RightArrowIcon
+            color={colors.primaryLight}
+            width={14}
+            height={14}
+            style={{ marginLeft: 3 }}
+          />
+        </TouchableOpacity>
       </View>
 
-      {/* Session Item Cards */}
+      {/* Session Item Cards / Empty State */}
       {recentSessions.length === 0 ? (
-        <View style={styles.emptyCard}>
-          <Text style={styles.emptyIcon}>🎯</Text>
-          <Text style={styles.emptyTitle}>No Recent Sessions</Text>
-          <Text style={styles.emptySub}>
-            Start a focus session to block distractions and track your progress!
+        <View style={styles.emptyCardContainer}>
+          <View style={styles.dashedClipboardRing}>
+            <Text style={{ fontSize: 26 }}>📋</Text>
+          </View>
+          <Text style={styles.emptyCardTitle}>No Sessions Yet</Text>
+          <Text style={styles.emptyCardSub}>
+            Your focus journey starts now.{'\n'}Start your first session!
           </Text>
         </View>
       ) : (
@@ -204,7 +332,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <View key={session.id} style={styles.sessionCard}>
             <View style={styles.sessionRow}>
               <View style={styles.sessionIconBox}>
-                <Text style={styles.sessionIcon}>
+                <Text style={styles.sessionIconEmoji}>
                   {session.category === 'coding'
                     ? '💻'
                     : session.category === 'reading'
@@ -215,9 +343,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 </Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.sessionTitle}>{session.title || 'Focus Session'}</Text>
+                <Text style={styles.sessionTitle}>
+                  {session.title || 'Focus Session'}
+                </Text>
                 <Text style={styles.sessionTime}>
-                  {session.start_time ? `${session.start_time} - ${session.end_time || ''}` : 'Today'}
+                  {session.start_time
+                    ? `${session.start_time} - ${session.end_time || ''}`
+                    : 'Today'}
                 </Text>
               </View>
               <View style={{ alignItems: 'flex-end' }}>
@@ -228,10 +360,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                   style={[
                     styles.sessionPts,
                     session.status === 'completed'
-                      ? { color: '#4ECCA3' }
-                      : { color: '#F87171' },
-                  ]}>
-                  {session.status === 'completed' ? '✓ Completed' : '✕ Ended'}
+                      ? { color: colors.secondary }
+                      : { color: '#F59E0B' },
+                  ]}
+                >
+                  {session.status === 'completed' ? '✓ Completed' : '⏱ Early Ended'}
                 </Text>
               </View>
             </View>
@@ -245,63 +378,46 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D1117',
+    backgroundColor: colors.background,
   },
   content: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: 110,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 120,
   },
   topBar: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: 24,
   },
-  brandRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  brandAppIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    marginRight: 14,
   },
-  avatarLogo: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    marginRight: spacing.sm,
-  },
-  brandName: {
-    fontFamily: fonts.bold,
-    color: '#FFFFFF',
-    fontSize: 22,
-    fontWeight: '700',
-  },
-  settingsBtn: {
-    padding: spacing.xs,
-  },
-  gearIcon: {
-    fontSize: 22,
-  },
-  greetingSection: {
-    marginBottom: spacing.lg,
+  headerTextGroup: {
+    flex: 1,
   },
   greetingTitle: {
     fontFamily: fonts.bold,
-    color: '#FFFFFF',
-    fontSize: 24,
-    fontWeight: '700',
+    color: colors.textPrimary,
+    letterSpacing: -0.3,
+    fontSize: 18
   },
   greetingSubtitle: {
     fontFamily: fonts.regular,
-    color: '#8B949E',
+    color: colors.textSecondary,
     fontSize: 14,
-    marginTop: 6,
+    marginTop: 2,
   },
   activeBannerCard: {
-    backgroundColor: '#183A2E',
-    borderRadius: 16,
+    backgroundColor: colors.secondaryContainer,
+    borderRadius: 20,
     padding: spacing.md + 2,
     marginBottom: spacing.lg,
     borderWidth: 1,
-    borderColor: '#4ECCA3',
+    borderColor: colors.secondary,
   },
   activeBannerHeader: {
     flexDirection: 'row',
@@ -311,159 +427,341 @@ const styles = StyleSheet.create({
   },
   activeBadge: {
     fontFamily: fonts.bold,
-    color: '#4ECCA3',
+    color: colors.secondary,
     fontSize: 12,
     fontWeight: '800',
     letterSpacing: 0.5,
   },
   activeTimerText: {
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     fontSize: 14,
     fontWeight: '700',
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   activeBannerTitle: {
     fontFamily: fonts.bold,
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     fontSize: 16,
     fontWeight: '700',
     marginBottom: 4,
   },
   activeBannerSub: {
     fontFamily: fonts.regular,
-    color: '#8B949E',
+    color: colors.textSecondary,
     fontSize: 13,
     marginBottom: spacing.md,
   },
   viewSessionBtn: {
-    backgroundColor: '#4ECCA3',
+    backgroundColor: colors.secondary,
     borderRadius: 12,
     paddingVertical: spacing.xs + 4,
     alignItems: 'center',
   },
   viewSessionBtnText: {
     fontFamily: fonts.bold,
-    color: '#0D1117',
+    color: colors.onSecondary,
     fontSize: 14,
     fontWeight: '700',
   },
   kpiRow: {
     flexDirection: 'row',
-    gap: spacing.md,
-    marginBottom: spacing.xl,
+    gap: 14,
+    marginBottom: 20,
   },
   kpiCard: {
     flex: 1,
-    backgroundColor: '#161B22',
-    borderRadius: 16,
-    padding: spacing.md + 2,
+    backgroundColor: colors.surface,
+    borderRadius: 20,
+    padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: colors.border,
+    position: 'relative',
+    overflow: 'hidden',
+    minHeight: 125,
   },
   kpiHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: 10,
   },
-  timerIcon: {
-    fontSize: 14,
+  greenIconCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 14,
+    backgroundColor: colors.secondaryContainer,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginRight: 4,
   },
-  fireIcon: {
-    fontSize: 14,
-    marginRight: 4,
+  orangeIconCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.tertiaryContainer,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
   },
   kpiLabelGreen: {
     fontFamily: fonts.bold,
-    color: '#4ECCA3',
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.5,
+    color: colors.secondary,
+    fontSize: 14,
+    letterSpacing: 0.6,
   },
   kpiLabelOrange: {
     fontFamily: fonts.bold,
-    color: '#F59E0B',
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.5,
+    color: colors.tertiary,
+    fontSize: 14,
+    letterSpacing: 0.6,
   },
   kpiValue: {
     fontFamily: fonts.bold,
-    color: '#FFFFFF',
-    fontSize: 22,
-    fontWeight: '700',
+    color: colors.textPrimary,
+    fontSize: 24,
+    marginBottom: 2,
   },
-  startSessionCta: {
+  kpiSubtext: {
+    fontFamily: fonts.regular,
+    color: colors.textSecondary,
+    fontSize: 12,
+    zIndex: 2,
+  },
+  cardWaveWrap: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    zIndex: 1,
+    opacity: 0.85,
+  },
+  startSessionCtaCard: {
+    backgroundColor: '#7C3AED',
+    borderRadius: 24,
+    height: 86,
+    paddingHorizontal: 18,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#161B22',
-    borderRadius: 28,
+    marginBottom: 28,
+    position: 'relative',
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    shadowColor: '#7C3AED',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.6,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  outerPlayRing: {
+    width: 58,
     height: 58,
-    marginBottom: spacing.xl,
-    borderWidth: 1.5,
-    borderColor: '#4F8CFF',
-    shadowColor: '#4F8CFF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 6,
+    borderRadius: 29,
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
   },
-  playTriangle: {
-    color: '#9DA9FF',
-    fontSize: 14,
-    marginRight: spacing.xs + 2,
+  playWhiteCircle: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
   },
-  ctaText: {
+  playIconTriangle: {
+    color: '#7C3AED',
+    fontSize: 18,
+    fontWeight: '900',
+    marginLeft: 3,
+  },
+  ctaTextContainer: {
+    flex: 1,
+    zIndex: 2,
+  },
+  ctaCardTitle: {
     fontFamily: fonts.bold,
-    color: '#C3C7F4',
-    fontSize: 16,
-    fontWeight: '700',
+    color: '#FFFFFF',
+    fontSize: 18,
+    marginBottom: 3,
+  },
+  ctaCardSub: {
+    fontFamily: fonts.regular,
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 13,
+  },
+  watermarkClockWrap: {
+    position: 'absolute',
+    right: 12,
+    alignSelf: 'center',
+    opacity: 0.85,
+    zIndex: 1,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    marginBottom: 16,
   },
   sectionTitle: {
     fontFamily: fonts.bold,
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '700',
+    color: colors.textPrimary,
+    fontSize: 22,
   },
-  emptyCard: {
-    backgroundColor: '#161B22',
-    borderRadius: 16,
-    padding: spacing.xl,
+  viewAllBtnPill: {
+    backgroundColor: colors.surfaceHigh,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  viewAllBtnText: {
+    fontFamily: fonts.semiBold,
+    color: colors.primaryLight,
+    fontSize: 12,
+  },
+  emptyCardContainer: {
+    backgroundColor: colors.surface,
+    borderRadius: 22,
+    paddingVertical: 36,
+    paddingHorizontal: 24,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: colors.border,
   },
-  emptyIcon: {
-    fontSize: 32,
-    marginBottom: spacing.xs,
+  /* Welcome Onboarding Card Styles */
+  welcomeHelpsCard: {
+    backgroundColor: '#13161B',
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
   },
-  emptyTitle: {
-    fontFamily: fonts.bold,
+  welcomeHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 18,
+  },
+  welcomeHelpsTitle: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 4,
+    fontFamily: fonts.bold,
+    marginLeft: 8,
   },
-  emptySub: {
-    fontFamily: fonts.regular,
+  welcomeFeaturesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  welcomeFeatureCol: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  welcomeIconBadge: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+    borderWidth: 1,
+  },
+  purpleShieldBadge: {
+    backgroundColor: 'rgba(168, 85, 247, 0.15)',
+    borderColor: 'rgba(168, 85, 247, 0.3)',
+  },
+  greenTargetBadge: {
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+  },
+  goldChartBadge: {
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+  },
+  welcomeFeatureTitle: {
+    color: '#8B949E',
+    fontSize: 12,
+    fontFamily: fonts.medium,
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+  welcomeFeatureDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  welcomeQuoteRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.04)',
+  },
+  quoteMarkText: {
+    color: '#A855F7',
+    fontSize: 22,
+    fontFamily: fonts.bold,
+    marginHorizontal: 6,
+  },
+  welcomeQuoteText: {
     color: '#8B949E',
     fontSize: 13,
+    fontFamily: fonts.regular,
     textAlign: 'center',
   },
+  dashedTargetRing: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    borderWidth: 1.5,
+    borderColor: colors.textMuted,
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 18,
+  },
+  dashedClipboardRing: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 1.5,
+    borderColor: '#A855F7',
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+    backgroundColor: 'rgba(168, 85, 247, 0.08)',
+  },
+  emptyCardTitle: {
+    fontFamily: fonts.bold,
+    color: colors.textPrimary,
+    fontSize: 19,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  emptyCardSub: {
+    fontFamily: fonts.regular,
+    color: colors.textSecondary,
+    fontSize: 13.5,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
   sessionCard: {
-    marginBottom: spacing.md,
-    backgroundColor: '#161B22',
-    borderRadius: 16,
-    padding: spacing.md,
+    marginBottom: 12,
+    backgroundColor: colors.surface,
+    borderRadius: 18,
+    padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: colors.border,
   },
   sessionRow: {
     flexDirection: 'row',
@@ -473,36 +771,35 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#21262D',
+    backgroundColor: colors.surfaceHigh,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: spacing.md,
+    marginRight: 14,
   },
-  sessionIcon: {
+  sessionIconEmoji: {
     fontSize: 20,
   },
   sessionTitle: {
     fontFamily: fonts.bold,
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     fontSize: 16,
-    fontWeight: '700',
   },
   sessionTime: {
     fontFamily: fonts.regular,
-    color: '#8B949E',
+    color: colors.textSecondary,
     fontSize: 13,
     marginTop: 2,
   },
   sessionDuration: {
     fontFamily: fonts.bold,
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
+    color: colors.textPrimary,
+    fontSize: 14,
   },
   sessionPts: {
     fontFamily: fonts.semiBold,
     fontSize: 13,
-    fontWeight: '600',
     marginTop: 2,
   },
 });
+
+

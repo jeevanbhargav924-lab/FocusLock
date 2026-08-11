@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, StatusBar, StyleProp, ViewStyle, StatusBarStyle } from 'react-native';
 import { SafeAreaView, Edge } from 'react-native-safe-area-context';
+import { colors } from '../theme';
 
 export interface ScreenLayoutProps {
   children: React.ReactNode;
@@ -13,7 +14,7 @@ export interface ScreenLayoutProps {
 
 export const ScreenLayout: React.FC<ScreenLayoutProps> = ({
   children,
-  backgroundColor = '#0D1117',
+  backgroundColor = colors.background,
   statusBarStyle = 'light-content',
   edges = ['top', 'left', 'right', 'bottom'],
   style,

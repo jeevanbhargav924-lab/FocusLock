@@ -9,7 +9,7 @@ import {
   Switch,
   SafeAreaView,
 } from 'react-native';
-import { spacing, radius, fonts } from '../theme';
+import { spacing, radius, fonts, colors } from '../theme';
 import { PasscodeModal } from '../components/PasscodeModal';
 import { BackIcon, SettingsIcon } from '../utils/Icons';
 
@@ -76,20 +76,20 @@ export const CreateSessionScreen: React.FC<CreateSessionScreenProps> = ({
 
   return (
     <SafeAreaView style={styles.fullScreenContainer}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+      >
         {/* Top Header Bar */}
         <View style={styles.topBar}>
           <TouchableOpacity onPress={handleDismiss} style={styles.backBtn}>
-            <Text style={styles.backArrow}> <BackIcon/> </Text>
+            <Text style={styles.backArrow}>
+              {' '}
+              <BackIcon />{' '}
+            </Text>
           </TouchableOpacity>
-          <Text style={styles.brandTitle}>FocusLock</Text>
+          <Text style={styles.brandTitle}>Create Focus Session</Text>
           <View style={{ width: 24 }} />
-        </View>
-
-        {/* Main Title & Subtitle */}
-        <View style={styles.header}>
-          <Text style={styles.mainTitle}>Create Focus Session</Text>
-          <Text style={styles.subtitle}>Configure your environment for deep work.</Text>
         </View>
 
         {/* Card 1: Duration Selector */}
@@ -98,7 +98,9 @@ export const CreateSessionScreen: React.FC<CreateSessionScreenProps> = ({
 
           {/* Large Digital Clock Display */}
           <View style={styles.clockContainer}>
-            <Text style={styles.clockText}>{formatTimerDisplay(durationMinutes)}</Text>
+            <Text style={styles.clockText}>
+              {formatTimerDisplay(durationMinutes)}
+            </Text>
           </View>
 
           {/* Preset Badges Row */}
@@ -113,12 +115,14 @@ export const CreateSessionScreen: React.FC<CreateSessionScreenProps> = ({
                   style={[
                     styles.presetBadge,
                     isSelected && styles.presetBadgeSelected,
-                  ]}>
+                  ]}
+                >
                   <Text
                     style={[
                       styles.presetBadgeText,
                       isSelected && styles.presetBadgeTextSelected,
-                    ]}>
+                    ]}
+                  >
                     {opt.label}
                   </Text>
                 </TouchableOpacity>
@@ -152,15 +156,14 @@ export const CreateSessionScreen: React.FC<CreateSessionScreenProps> = ({
                   key={tag}
                   activeOpacity={0.8}
                   onPress={() => setSelectedTag(tag)}
-                  style={[
-                    styles.tagPill,
-                    isSelected && styles.tagPillSelected,
-                  ]}>
+                  style={[styles.tagPill, isSelected && styles.tagPillSelected]}
+                >
                   <Text
                     style={[
                       styles.tagPillText,
                       isSelected && styles.tagPillTextSelected,
-                    ]}>
+                    ]}
+                  >
                     {isSelected ? `✓ ${tag}` : tag}
                   </Text>
                 </TouchableOpacity>
@@ -179,7 +182,8 @@ export const CreateSessionScreen: React.FC<CreateSessionScreenProps> = ({
             style={styles.constraintRow}
             onPress={() => {
               if (onNavigateToAllowedApps) onNavigateToAllowedApps();
-            }}>
+            }}
+          >
             <View style={styles.constraintIconBox}>
               <Text style={styles.constraintIcon}>▦</Text>
             </View>
@@ -218,7 +222,8 @@ export const CreateSessionScreen: React.FC<CreateSessionScreenProps> = ({
         <TouchableOpacity
           activeOpacity={0.85}
           style={styles.startBtn}
-          onPress={handlePressStart}>
+          onPress={handlePressStart}
+        >
           <Text style={styles.startBtnIcon}>▶</Text>
           <Text style={styles.startBtnText}>Set PIN & Start Focus Session</Text>
         </TouchableOpacity>
@@ -241,11 +246,11 @@ export const CreateSessionScreen: React.FC<CreateSessionScreenProps> = ({
 const styles = StyleSheet.create({
   fullScreenContainer: {
     flex: 1,
-    backgroundColor: '#0D1117',
+    backgroundColor: colors.background,
   },
   container: {
     flex: 1,
-    backgroundColor: '#0D1117',
+    backgroundColor: colors.background,
   },
   content: {
     paddingHorizontal: spacing.lg,
@@ -257,10 +262,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: spacing.lg,
-    paddingTop:30
+    // paddingTop:30
   },
   backBtn: {
     padding: spacing.xs,
+    borderColor: '#6B7280',
+    borderWidth: 1,
+    borderRadius: 20,
   },
   backArrow: {
     color: '#D0D7DE',
@@ -452,25 +460,25 @@ const styles = StyleSheet.create({
   divider: {
     height: 1,
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    marginVertical: spacing.sm,
+    marginVertical: 5,
   },
   startBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#9DA9FF',
+    backgroundColor: '#A855F7',
     borderRadius: 16,
     height: 56,
-    marginTop: spacing.sm,
+    // marginTop: spacing.sm,
   },
   startBtnIcon: {
-    color: '#1E1B4B',
+    color: '#fff',
     fontSize: 14,
     marginRight: spacing.xs + 2,
   },
   startBtnText: {
     fontFamily: fonts.bold,
-    color: '#1E1B4B',
+    color: '#fff',
     fontSize: 16,
     fontWeight: '700',
   },

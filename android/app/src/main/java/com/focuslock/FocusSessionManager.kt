@@ -56,7 +56,11 @@ object FocusSessionManager {
     fun getMaxDailyChanges(context: Context): Int {
         val db = FocusDatabaseHelper(context)
         val valStr = db.getMetaValue(KEY_MAX_DAILY_CHANGES)
-        return valStr?.toIntOrNull() ?: DEFAULT_MAX_DAILY_CHANGES
+        if (valStr != null) {
+            return valStr.toIntOrNull() ?: DEFAULT_MAX_DAILY_CHANGES
+        }
+        val prefs = getPrefs(context)
+        return prefs.getInt(KEY_MAX_DAILY_CHANGES, DEFAULT_MAX_DAILY_CHANGES)
     }
 
     fun setMaxDailyChanges(context: Context, limit: Int, lock: Boolean = false) {
@@ -65,12 +69,17 @@ object FocusSessionManager {
         if (lock) {
             db.setMetaValue(KEY_IS_LIMIT_LOCKED, "1")
         }
+        val prefs = getPrefs(context)
+        prefs.edit().putInt(KEY_MAX_DAILY_CHANGES, limit).putBoolean(KEY_IS_LIMIT_LOCKED, lock).apply()
+        Log.d("FocusSessionManager", "setMaxDailyChanges: limit=$limit, lock=$lock")
     }
 
     fun isDailyLimitLocked(context: Context): Boolean {
         val db = FocusDatabaseHelper(context)
         val valStr = db.getMetaValue(KEY_IS_LIMIT_LOCKED)
-        return valStr == "1"
+        if (valStr == "1") return true
+        val prefs = getPrefs(context)
+        return prefs.getBoolean(KEY_IS_LIMIT_LOCKED, false)
     }
 
     fun getDailyChangesRemaining(context: Context): Int {
@@ -83,18 +92,26 @@ object FocusSessionManager {
         if (maxChanges == 0) return 0
 
         val db = FocusDatabaseHelper(context)
+        val prefs = getPrefs(context)
         val today = getTodayDateString()
-        val lastDate = db.getMetaValue(KEY_LAST_CHANGE_DATE) ?: ""
+
+        var lastDate = db.getMetaValue(KEY_LAST_CHANGE_DATE)
+        if (lastDate == null) {
+            lastDate = prefs.getString(KEY_LAST_CHANGE_DATE, "")
+        }
 
         if (lastDate != today) {
             db.setMetaValue(KEY_LAST_CHANGE_DATE, today)
             db.setMetaValue(KEY_DAILY_CHANGES_COUNT, "0")
+            prefs.edit().putString(KEY_LAST_CHANGE_DATE, today).putInt(KEY_DAILY_CHANGES_COUNT, 0).apply()
             return maxChanges
         }
 
-        val usedStr = db.getMetaValue(KEY_DAILY_CHANGES_COUNT) ?: "0"
-        val used = usedStr.toIntOrNull() ?: 0
-        return (maxChanges - used).coerceAtLeast(0)
+        val usedStr = db.getMetaValue(KEY_DAILY_CHANGES_COUNT)
+        val used = usedStr?.toIntOrNull() ?: prefs.getInt(KEY_DAILY_CHANGES_COUNT, 0)
+        val remaining = (maxChanges - used).coerceAtLeast(0)
+        Log.d("FocusSessionManager", "getDailyChangesRemaining: max=$maxChanges, used=$used, remaining=$remaining")
+        return remaining
     }
 
     fun recordDailyChange(context: Context): Boolean {
@@ -106,11 +123,18 @@ object FocusSessionManager {
         if (remaining <= 0) return false
 
         val db = FocusDatabaseHelper(context)
-        val usedStr = db.getMetaValue(KEY_DAILY_CHANGES_COUNT) ?: "0"
-        val used = usedStr.toIntOrNull() ?: 0
+        val prefs = getPrefs(context)
+        val today = getTodayDateString()
 
-        db.setMetaValue(KEY_LAST_CHANGE_DATE, getTodayDateString())
-        db.setMetaValue(KEY_DAILY_CHANGES_COUNT, (used + 1).toString())
+        val usedStr = db.getMetaValue(KEY_DAILY_CHANGES_COUNT)
+        val used = usedStr?.toIntOrNull() ?: prefs.getInt(KEY_DAILY_CHANGES_COUNT, 0)
+        val newUsed = used + 1
+
+        db.setMetaValue(KEY_LAST_CHANGE_DATE, today)
+        db.setMetaValue(KEY_DAILY_CHANGES_COUNT, newUsed.toString())
+
+        prefs.edit().putString(KEY_LAST_CHANGE_DATE, today).putInt(KEY_DAILY_CHANGES_COUNT, newUsed).apply()
+        Log.d("FocusSessionManager", "recordDailyChange: max=$maxChanges, newUsed=$newUsed, remaining=${maxChanges - newUsed}")
         return true
     }
 
@@ -297,7 +321,7 @@ object FocusSessionManager {
         }
     }
 
-    fun endSession(context: Context) {
+    fun endSession(context: Context, status: String = "ended") {
         val prefs = getPrefs(context)
         val jsonStr = prefs.getString(KEY_ACTIVE_SESSION, null)
         if (jsonStr != null) {
@@ -306,7 +330,7 @@ object FocusSessionManager {
                 val sessionId = json.optString("sessionId", "")
                 if (sessionId.isNotEmpty()) {
                     val db = FocusDatabaseHelper(context)
-                    db.markSessionCompleted(sessionId, "completed")
+                    db.markSessionCompleted(sessionId, status)
                 }
             } catch (e: Exception) {
                 e.printStackTrace()

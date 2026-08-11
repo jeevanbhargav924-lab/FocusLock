@@ -131,7 +131,7 @@ export const TermsOfUseScreen: React.FC<TermsOfUseScreenProps> = ({ onBack }) =>
             If you have any questions or concerns regarding these Terms of Use, please contact us at:
           </Text>
           <View style={styles.contactCard}>
-            <Text style={styles.contactEmail}>📧 terms@focuslock.app</Text>
+            <Text style={styles.contactEmail}>📧 jeevanbhargav286@gmail.com</Text>
             <Text style={styles.contactSub}>FocusLock Support & Legal Team</Text>
           </View>
 
@@ -157,13 +157,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
-    paddingTop: 30,
+    paddingTop: 40,
     paddingBottom: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
   backBtn: {
-    padding: spacing.xs,
+    padding: 12,
+    borderColor: '#6B7280',
+    borderWidth: 1,
+    borderRadius: 50,
   },
   topTitle: {
     fontFamily: fonts.bold,
