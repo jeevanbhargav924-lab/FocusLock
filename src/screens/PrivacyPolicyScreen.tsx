@@ -44,12 +44,12 @@ export const PrivacyPolicyScreen: React.FC<PrivacyPolicyScreenProps> = ({ onBack
             FocusLock may request the following Android permissions or system access:
           </Text>
 
-          <Text style={styles.subHeader}>Accessibility Service</Text>
+          <Text style={styles.subHeader}>Accessibility Service (BIND_ACCESSIBILITY_SERVICE)</Text>
           <Text style={styles.paragraph}>
-            FocusLock uses Android's Accessibility Service to detect when an application is opened during an active Focus Session. This access is used to help FocusLock prevent access to distracting applications while a Focus Session is active.
+            FocusLock uses Android's Accessibility Service solely to detect when a blocked application is opened during an active user-initiated Focus Session. This allows FocusLock to display a motivational blocking screen and prevent access to distracting applications.
           </Text>
           <Text style={styles.highlightParagraph}>
-            FocusLock does not use Accessibility Service to read, collect, or store your personal messages, passwords, keystrokes, photos, contacts, or other private content.
+            FocusLock does NOT use the Accessibility Service to collect, store, or transmit any personal data, messages, passwords, keystrokes, photos, contacts, or financial information. All accessibility checks operate locally on-device in real time, and no data is ever uploaded to external servers or shared with third parties.
           </Text>
 
           <Text style={styles.subHeader}>Usage Access</Text>
@@ -136,12 +136,12 @@ export const PrivacyPolicyScreen: React.FC<PrivacyPolicyScreenProps> = ({ onBack
           </Text>
 
           {/* Section 6 */}
-          <Text style={styles.sectionHeader}>6. Data Retention and Deletion</Text>
+          <Text style={styles.sectionHeader}>6. Data Retention and Local Data Deletion</Text>
           <Text style={styles.paragraph}>
-            FocusLock does not intentionally retain personal information obtained through Accessibility Service or Usage Access solely for advertising or profiling purposes.
+            FocusLock operates on a privacy-first model: 100% of your focus session history, custom app blocking lists, and app statistics are stored locally on your device in a secure local database.
           </Text>
           <Text style={styles.paragraph}>
-            If future versions of FocusLock store additional user information, this Privacy Policy will be updated to explain the applicable retention and deletion practices.
+            Because FocusLock does not collect or transmit user data to external servers, you have full control over your data. You can permanently delete all app data, statistics, and settings at any time by clearing the application storage in Android Settings (`Settings > Apps > Focus Lock > Storage > Clear Data`) or by uninstalling the application.
           </Text>
 
           {/* Section 7 */}

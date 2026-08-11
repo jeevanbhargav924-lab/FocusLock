@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy - Focus Lock</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --text-primary: #f0f6fc;
+            --text-secondary: #8b949e;
+            --accent-color: #4f8cff;
+            --accent-green: #3fb950;
+            --border-color: rgba(255, 255, 255, 0.1);
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        .header {
+            text-align: center;
+            padding-bottom: 30px;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 30px;
+        }
+        .logo {
+            font-size: 42px;
+            margin-bottom: 10px;
+        }
+        h1 {
+            font-size: 32px;
+            font-weight: 800;
+            margin: 0 0 10px 0;
+            color: #ffffff;
+        }
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        .highlight-box {
+            background-color: rgba(79, 140, 255, 0.08);
+            border: 1px solid rgba(79, 140, 255, 0.25);
+            border-left: 4px solid var(--accent-color);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 24px 0;
+        }
+        .highlight-box h3 {
+            margin-top: 0;
+            color: var(--accent-color);
+            font-size: 18px;
+        }
+        h2 {
+            font-size: 20px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-top: 32px;
+            margin-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 6px;
+        }
+        h3 {
+            font-size: 16px;
+            color: #9da9ff;
+            margin-top: 20px;
+            margin-bottom: 8px;
+        }
+        p, li {
+            color: #c9d1d9;
+            font-size: 15px;
+        }
+        ul {
+            padding-left: 20px;
+        }
+        li {
+            margin-bottom: 6px;
+        }
+        .contact-card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            margin-top: 24px;
+        }
+        .contact-card a {
+            color: var(--accent-color);
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🔒</div>
+            <h1>Focus Lock Privacy Policy</h1>
+            <div class="subtitle">Effective Date: August 11, 2026 | App Package: com.focuslock.productivity</div>
+        </div>
+
+        <div class="highlight-box">
+            <h3>🔒 100% Offline & Privacy-First Commitment</h3>
+            <p style="margin-bottom: 0;">Focus Lock is designed from the ground up as a privacy-first, 100% offline application. Zero personal data, application usage statistics, keystrokes, messages, or screen content are ever collected, stored on external servers, or transmitted off your device.</p>
+        </div>
+
+        <p>Focus Lock ("we", "our", or "the app") provides a digital wellbeing tool to help users reduce mobile distractions and improve focus. This Privacy Policy explains how our application operates regarding device permissions and user privacy.</p>
+
+        <h2>1. Android System Permissions & Purpose</h2>
+        <p>To enforce focus sessions and block selected distracting applications locally, Focus Lock requests the following system permissions:</p>
+
+        <h3>a. Accessibility Service (BIND_ACCESSIBILITY_SERVICE)</h3>
+        <p>Focus Lock uses Android's Accessibility Service solely to detect when a user-selected distracting application is launched during an active Focus Session, automatically displaying a blocking screen to keep you on track.</p>
+        <ul>
+            <li><strong>Prominent Disclosure:</strong> The Accessibility Service operates strictly in real time on your device.</li>
+            <li><strong>Zero Data Collection:</strong> Focus Lock does NOT use Accessibility Access to read, record, store, or transmit your private messages, passwords, photos, contacts, financial info, audio, or screen text.</li>
+            <li><strong>No External Sharing:</strong> Zero accessibility data is ever uploaded to remote servers or shared with third parties.</li>
+        </ul>
+
+        <h3>b. Usage Access (PACKAGE_USAGE_STATS)</h3>
+        <p>Required to accurately determine which application is currently active on your device and calculate local focus session statistics.</p>
+
+        <h3>c. Ignore Battery Optimization (REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)</h3>
+        <p>Allows Focus Lock's background timer service to stay active during deep work sessions without being killed by Android system power managers.</p>
+
+        <h3>d. Notifications</h3>
+        <p>Used to send local alerts on your device for session start, remaining time, and session completion reminders.</p>
+
+        <h2>2. Data Collection & Analytics</h2>
+        <p><strong>We collect ZERO personal data.</strong> Focus Lock does not incorporate any third-party analytics SDKs, advertising frameworks, user tracking tools, or cloud backends.</p>
+        <ul>
+            <li>No Account Needed: Focus Lock does not require user registration, email sign-in, or passwords.</li>
+            <li>No Location Data: We do not track or request your GPS or device location.</li>
+            <li>No Third-Party Sharing: Because no data is collected, no data is sold, rented, or shared with advertisers or data brokers.</li>
+        </ul>
+
+        <h2>3. Local Data Storage & Deletion</h2>
+        <p>All focus session logs, stats, streak records, and custom blocking preferences are saved locally on your device in an encrypted SQLite database.</p>
+        <p>You have full ownership of your data. You can instantly and permanently erase all application statistics and preferences at any time by:</p>
+        <ul>
+            <li>Clearing app data in Android Settings: <code>Settings &gt; Apps &gt; Focus Lock &gt; Storage &gt; Clear Storage</code></li>
+            <li>Uninstalling the Focus Lock application from your device.</li>
+        </ul>
+
+        <h2>4. Children's Privacy</h2>
+        <p>Focus Lock does not knowingly collect any personal information from children under the age of 13. The application is an offline productivity utility suitable for general audiences.</p>
+
+        <h2>5. Changes to This Privacy Policy</h2>
+        <p>We may update this Privacy Policy from time to time to reflect app updates or regulatory requirements. Any updates will be published on this page with a revised effective date.</p>
+
+        <h2>6. Contact Us</h2>
+        <p>If you have any questions or inquiries regarding this Privacy Policy or Focus Lock's privacy practices, please contact us at:</p>
+        <div class="contact-card">
+            <p style="margin: 0 0 6px 0;"><strong>Developer / Legal Contact:</strong> Focus Lock Support</p>
+            <p style="margin: 0;"><strong>Email:</strong> <a href="mailto:jeevanbhargav286@gmail.com">jeevanbhargav286@gmail.com</a></p>
+        </div>
+
+        <div class="footer">
+            &copy; 2026 Focus Lock. All rights reserved.
+        </div>
+    </div>
+</body>
+</html>

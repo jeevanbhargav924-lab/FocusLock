@@ -368,23 +368,7 @@ export const getUserProfile = async (uid: string): Promise<UserProfileRecord | n
 };
 
 export const getCurrentUserProfile = async (): Promise<UserProfileRecord | null> => {
-  // 1. Try Firebase auth currentUser first if logged in
-  try {
-    const authModule = require('@react-native-firebase/auth');
-    const authInst = typeof authModule.default === 'function' ? authModule.default() : typeof authModule === 'function' ? authModule() : null;
-    const user = authInst?.currentUser;
-    if (user) {
-      return {
-        uid: user.uid,
-        email: user.email || '',
-        display_name: user.displayName || (user.email ? user.email.split('@')[0] : 'Focus User'),
-        photo_url: user.photoURL || '',
-        created_at: Date.now(),
-      };
-    }
-  } catch (e) {}
-
-  // 2. Try SQLite DB last user
+  // 1. Try SQLite DB last user
   if (sqliteDbInstance) {
     try {
       const [results] = await sqliteDbInstance.executeSql(

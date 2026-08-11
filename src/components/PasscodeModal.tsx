@@ -156,7 +156,21 @@ export const PasscodeModal: React.FC<PasscodeModalProps> = ({
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
       <View style={styles.overlay}>
         <View style={styles.container}>
-          {/* Header Title */}
+          {/* Top-Right Close Button */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            style={styles.closeBtn}
+            onPress={onCancel}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Text style={styles.closeBtnText}>✕</Text>
+          </TouchableOpacity>
+
+          {/* Header Security Icon Badge */}
+          <View style={styles.iconBadgeContainer}>
+            <Text style={styles.iconBadgeText}>🔒</Text>
+          </View>
+
+          {/* Header Title & Subtitle */}
           <Text style={styles.title}>
             {title || (mode === 'setup' ? (step === 'enter' ? 'Set Security Passcode' : 'Confirm Security Passcode') : 'Enter Security Passcode')}
           </Text>
@@ -177,9 +191,11 @@ export const PasscodeModal: React.FC<PasscodeModalProps> = ({
             })}
           </View>
 
-          {/* Error Message */}
+          {/* Error Message Banner */}
           {Boolean(errorMessage) && (
-            <Text style={styles.errorText}>{errorMessage}</Text>
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>⚠️ {errorMessage}</Text>
+            </View>
           )}
 
           {/* Fingerprint Quick Scan Button (If Supported in Verify Mode) */}
@@ -193,35 +209,42 @@ export const PasscodeModal: React.FC<PasscodeModalProps> = ({
             </TouchableOpacity>
           )}
 
-          {/* Number Pad Grid */}
+          {/* Number Pad Grid (3-Column Standard Layout) */}
           <View style={styles.keypad}>
-            {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(key => (
-              <TouchableOpacity
-                key={key}
-                activeOpacity={0.7}
-                style={styles.keyBtn}
-                onPress={() => handleKeyPress(key)}>
-                <Text style={styles.keyText}>{key}</Text>
-              </TouchableOpacity>
+            {[
+              ['1', '2', '3'],
+              ['4', '5', '6'],
+              ['7', '8', '9'],
+              ['empty', '0', 'delete'],
+            ].map((row, rIdx) => (
+              <View key={rIdx} style={styles.keypadRow}>
+                {row.map(item => {
+                  if (item === 'empty') {
+                    return <View key="empty" style={styles.keyBtnAux} />;
+                  }
+                  if (item === 'delete') {
+                    return (
+                      <TouchableOpacity
+                        key="delete"
+                        activeOpacity={0.7}
+                        style={styles.keyBtnAux}
+                        onPress={handleDelete}>
+                        <Text style={styles.deleteText}>⌫</Text>
+                      </TouchableOpacity>
+                    );
+                  }
+                  return (
+                    <TouchableOpacity
+                      key={item}
+                      activeOpacity={0.75}
+                      style={styles.keyBtn}
+                      onPress={() => handleKeyPress(item)}>
+                      <Text style={styles.keyText}>{item}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             ))}
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={styles.keyBtnCancel}
-              onPress={onCancel}>
-              <Text style={styles.cancelText}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={styles.keyBtn}
-              onPress={() => handleKeyPress('0')}>
-              <Text style={styles.keyText}>0</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={styles.keyBtnDelete}
-              onPress={handleDelete}>
-              <Text style={styles.deleteText}>⌫</Text>
-            </TouchableOpacity>
           </View>
         </View>
       </View>
@@ -239,12 +262,51 @@ const styles = StyleSheet.create({
   },
   container: {
     width: '100%',
+    maxWidth: 340,
     backgroundColor: '#161B22',
-    borderRadius: 24,
-    padding: spacing.xl,
+    borderRadius: 28,
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.lg,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.5,
+    shadowRadius: 16,
+    elevation: 20,
+    position: 'relative',
+  },
+  closeBtn: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  closeBtnText: {
+    color: '#8B949E',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  iconBadgeContainer: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(79, 140, 255, 0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(79, 140, 255, 0.3)',
+  },
+  iconBadgeText: {
+    fontSize: 24,
   },
   title: {
     color: '#FFFFFF',
@@ -252,34 +314,52 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
     marginBottom: 6,
+    letterSpacing: 0.3,
   },
   subtitle: {
     color: '#8B949E',
     fontSize: 13,
     textAlign: 'center',
+    lineHeight: 18,
     marginBottom: spacing.lg,
+    paddingHorizontal: spacing.sm,
   },
   dotsRow: {
     flexDirection: 'row',
-    gap: 16,
-    marginBottom: spacing.md,
+    gap: 18,
+    marginBottom: spacing.lg,
+    alignItems: 'center',
   },
   dot: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    borderWidth: 1.5,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 2,
     borderColor: '#4F8CFF',
     backgroundColor: 'transparent',
   },
   dotFilled: {
     backgroundColor: '#4F8CFF',
+    shadowColor: '#4F8CFF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  errorContainer: {
+    backgroundColor: 'rgba(248, 81, 73, 0.12)',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: 10,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(248, 81, 73, 0.3)',
   },
   errorText: {
     color: '#F85149',
     fontSize: 13,
     fontWeight: '600',
-    marginBottom: spacing.sm,
+    textAlign: 'center',
   },
   fingerprintBannerBtn: {
     flexDirection: 'row',
@@ -302,46 +382,46 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   keypad: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
+    width: '100%',
+    alignItems: 'center',
     gap: 14,
     marginTop: spacing.xs,
   },
+  keypadRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '100%',
+    maxWidth: 280,
+  },
   keyBtn: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 68,
+    height: 68,
+    borderRadius: 34,
     backgroundColor: '#21262D',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  keyBtnAux: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
     justifyContent: 'center',
     alignItems: 'center',
   },
   keyText: {
     color: '#FFFFFF',
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: '600',
-  },
-  keyBtnCancel: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   cancelText: {
     color: '#8B949E',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
-  },
-  keyBtnDelete: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   deleteText: {
     color: '#8B949E',
-    fontSize: 20,
+    fontSize: 22,
   },
 });

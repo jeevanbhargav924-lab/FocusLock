@@ -1,6 +1,6 @@
 {
   "name": "FocusLock",
-  "version": "0.0.1",
+  "version": "1.0.2",
   "private": true,
   "scripts": {
     "android": "react-native run-android",
@@ -11,9 +11,6 @@
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^3.1.1",
-    "@react-native-firebase/app": "^26.1.0",
-    "@react-native-firebase/auth": "^26.1.0",
-    "@react-native-google-signin/google-signin": "^16.1.4",
     "@react-native/new-app-screen": "0.86.2",
     "react": "19.2.3",
     "react-native": "0.86.2",

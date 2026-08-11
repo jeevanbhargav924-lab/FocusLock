@@ -2,14 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { StatusBar, StyleSheet, View, NativeModules, Platform, Alert, Modal } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-// @ts-ignore
-import auth from '@react-native-firebase/auth';
-
 import { BottomNavigation, TabKey } from './src/components/BottomNavigation';
 import { ScreenLayout } from './src/components/ScreenLayout';
 import { SplashScreen } from './src/screens/SplashScreen';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
-import { AuthScreen } from './src/screens/AuthScreen';
 import { PermissionSetupScreen } from './src/screens/PermissionSetupScreen';
 
 import { HomeScreen } from './src/screens/HomeScreen';
@@ -29,7 +25,7 @@ import { initDatabase, saveSessionRecord } from './src/services/database';
 import { Toast, ToastContainer } from './src/components/Toast';
 import { colors } from './src/theme';
 
-type AppFlowStep = 'splash' | 'onboarding' | 'auth' | 'permissions' | 'main';
+type AppFlowStep = 'splash' | 'onboarding' | 'permissions' | 'main';
 
 function App(): React.JSX.Element {
   return (
@@ -46,7 +42,6 @@ function MainAppController(): React.JSX.Element {
   const [flowStep, setFlowStep] = useState<AppFlowStep>('splash');
   const [activeTab, setActiveTab] = useState<TabKey>('home');
   const [hasSeenOnboarding, setHasSeenOnboarding] = useState<boolean>(false);
-  const [isGuest, setIsGuest] = useState<boolean>(true);
 
   // Session & Protection States
   const [isSessionActive, setIsSessionActive] = useState<boolean>(false);
@@ -107,8 +102,7 @@ function MainAppController(): React.JSX.Element {
           setHasSeenOnboarding(true);
         }
 
-        // 2. Local Mode Initialized
-        setIsGuest(true);
+        // Local Mode Initialized
       } catch (e) {
         console.warn('Error checking initial app state:', e);
       }
@@ -161,23 +155,6 @@ function MainAppController(): React.JSX.Element {
       setHasSeenOnboarding(true);
     } catch (e) {}
     setFlowStep('permissions');
-  };
-
-  // Handle Login Success
-  const handleLoginSuccess = () => {
-    setIsGuest(false);
-    setFlowStep('main');
-  };
-
-  // Handle Sign Out / Logout
-  const handleSignOut = async () => {
-    try {
-      if (auth().currentUser) {
-        await auth().signOut();
-      }
-    } catch (e) {}
-    setIsGuest(true);
-    setFlowStep('main');
   };
 
   // Helper to verify if Android Usage Access and Accessibility permissions are active
@@ -350,7 +327,7 @@ function MainAppController(): React.JSX.Element {
     const now = new Date();
     const startTimeStr = new Date(now.getTime() - elapsedSec * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const endTimeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const currentUid = isGuest ? 'guest_user' : (auth().currentUser?.uid || 'default_user');
+    const currentUid = 'local_user';
 
     await saveSessionRecord(
       {
@@ -406,7 +383,7 @@ function MainAppController(): React.JSX.Element {
     const now = new Date();
     const startTimeStr = new Date(now.getTime() - sessionMinutes * 60 * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const endTimeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const currentUid = isGuest ? 'guest_user' : (auth().currentUser?.uid || 'default_user');
+    const currentUid = 'local_user';
 
     await saveSessionRecord(
       {
@@ -506,7 +483,6 @@ function MainAppController(): React.JSX.Element {
         return (
           <SettingsScreen
             onBack={() => setActiveTab('home')}
-            isGuest={isGuest}
           />
         );
       default:

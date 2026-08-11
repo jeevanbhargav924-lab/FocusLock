@@ -24,16 +24,10 @@ import { AboutIcon, EmergencyLimitIcon, EmergencyPinIcon, HelpAndSupportIcon, Pr
 
 interface SettingsScreenProps {
   onBack?: () => void;
-  onSignOut?: () => void;
-  onLogin?: () => void;
-  isGuest?: boolean;
 }
 
 export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   onBack,
-  onSignOut,
-  onLogin,
-  isGuest = false,
 }) => {
   // const [darkMode, setDarkMode] = useState<boolean>(true);
   // const [biometricUnlock, setBiometricUnlock] = useState<boolean>(true);

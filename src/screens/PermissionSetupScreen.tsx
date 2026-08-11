@@ -9,9 +9,14 @@ import {
   AppState,
   Switch,
   TouchableOpacity,
+  SafeAreaView,
 } from 'react-native';
 import { spacing, radius, colors } from '../theme';
 import { request, check, PERMISSIONS, RESULTS } from 'react-native-permissions';
+import {
+  PermissionDisclosureModal,
+  PermissionDisclosureType,
+} from '../components/PermissionDisclosureModal';
 
 interface PermissionSetupScreenProps {
   onCompletePermissions?: () => void;
@@ -31,6 +36,9 @@ export const PermissionSetupScreen: React.FC<PermissionSetupScreenProps> = ({
   const [usageAccess, setUsageAccess] = useState<boolean>(false);
   const [notifAccess, setNotifAccess] = useState<boolean>(true);
   const [batteryAccess, setBatteryAccess] = useState<boolean>(false);
+
+  // Disclosure modal state
+  const [activeModalType, setActiveModalType] = useState<PermissionDisclosureType | null>(null);
 
   const allPermissionsGranted = Boolean(accessibilityAccess && usageAccess && batteryAccess);
 
@@ -92,7 +100,7 @@ export const PermissionSetupScreen: React.FC<PermissionSetupScreenProps> = ({
             handleFinishPermissions();
           }
         })
-        .catch(() => {});
+        .catch(() => { });
     }
 
     checkAllPermissions();
@@ -145,6 +153,60 @@ export const PermissionSetupScreen: React.FC<PermissionSetupScreenProps> = ({
     }
   };
 
+  const handlePressPermission = (type: PermissionDisclosureType) => {
+    switch (type) {
+      case 'accessibility':
+        if (accessibilityAccess) {
+          requestAccessibilityPermission();
+        } else {
+          setActiveModalType('accessibility');
+        }
+        break;
+      case 'usage':
+        if (usageAccess) {
+          requestUsagePermission();
+        } else {
+          setActiveModalType('usage');
+        }
+        break;
+      case 'notification':
+        if (notifAccess) {
+          toggleNotificationPermission(false);
+        } else {
+          setActiveModalType('notification');
+        }
+        break;
+      case 'battery':
+        if (batteryAccess) {
+          requestBatteryPermission();
+        } else {
+          setActiveModalType('battery');
+        }
+        break;
+    }
+  };
+
+  const handleModalConfirm = () => {
+    const currentType = activeModalType;
+    setActiveModalType(null);
+    if (!currentType) return;
+
+    switch (currentType) {
+      case 'accessibility':
+        requestAccessibilityPermission();
+        break;
+      case 'usage':
+        requestUsagePermission();
+        break;
+      case 'notification':
+        toggleNotificationPermission(true);
+        break;
+      case 'battery':
+        requestBatteryPermission();
+        break;
+    }
+  };
+
   const handleContinueSetup = () => {
     if (!allPermissionsGranted) return;
     if (Platform.OS === 'android' && NativeModules.PermissionModule?.setPermissionsCompleted) {
@@ -167,8 +229,19 @@ export const PermissionSetupScreen: React.FC<PermissionSetupScreenProps> = ({
       <View style={styles.header}>
         <Text style={styles.mainTitle}>Required Permissions</Text>
         <Text style={styles.subtitle}>
-          To provide deep focus and block distractions, FocusLock needs access to the following system features.
+          To enforce focus sessions and block distractions locally, Focus Lock needs standard Android system permissions.
         </Text>
+      </View>
+
+      {/* Privacy Guarantee Banner */}
+      <View style={styles.privacyGuaranteeCard}>
+        <Text style={styles.privacyGuaranteeIcon}>🔒</Text>
+        <View style={styles.privacyGuaranteeTextCol}>
+          <Text style={styles.privacyGuaranteeTitle}>100% Offline & Private</Text>
+          <Text style={styles.privacyGuaranteeSub}>
+            Focus Lock operates 100% offline. Zero personal data, messages, or screen content are ever collected, read, or transmitted.
+          </Text>
+        </View>
       </View>
 
       {/* Card 1: Accessibility Service */}
@@ -180,7 +253,7 @@ export const PermissionSetupScreen: React.FC<PermissionSetupScreenProps> = ({
           <View style={styles.cardTextContent}>
             <Text style={styles.cardTitle}>Accessibility Service</Text>
             <Text style={styles.cardDesc}>
-              Required to detect when you open distracting apps and block them instantly.
+              Used ONLY locally to detect when a blocked app opens during a session. Zero keystrokes, messages, or screen data are ever read or saved.
             </Text>
           </View>
         </View>
@@ -191,7 +264,7 @@ export const PermissionSetupScreen: React.FC<PermissionSetupScreenProps> = ({
               styles.allowButton,
               accessibilityAccess && styles.grantedButton,
             ]}
-            onPress={requestAccessibilityPermission}
+            onPress={() => handlePressPermission('accessibility')}
           >
             <Text style={styles.allowButtonText}>
               {accessibilityAccess ? 'ALLOWED ✓' : 'ALLOW ACCESS'}
@@ -209,7 +282,7 @@ export const PermissionSetupScreen: React.FC<PermissionSetupScreenProps> = ({
           <View style={styles.cardTextContent}>
             <Text style={styles.cardTitle}>Usage Access</Text>
             <Text style={styles.cardDesc}>
-              Allows us to determine which app is currently active on your screen.
+              Used ONLY to check active session time locally on your device. We cannot view your personal content.
             </Text>
           </View>
         </View>
@@ -217,7 +290,7 @@ export const PermissionSetupScreen: React.FC<PermissionSetupScreenProps> = ({
           <TouchableOpacity
             activeOpacity={0.8}
             style={[styles.allowButton, usageAccess && styles.grantedButton]}
-            onPress={requestUsagePermission}
+            onPress={() => handlePressPermission('usage')}
           >
             <Text style={styles.allowButtonText}>
               {usageAccess ? 'ALLOWED ✓' : 'ALLOW ACCESS'}
@@ -235,12 +308,18 @@ export const PermissionSetupScreen: React.FC<PermissionSetupScreenProps> = ({
           <View style={styles.cardTextContent}>
             <Text style={styles.cardTitle}>Notifications</Text>
             <Text style={styles.cardDesc}>
-              Receive reminders when focus sessions start or end.
+              Receive local reminders on your device when focus sessions start or end.
             </Text>
           </View>
           <Switch
             value={notifAccess}
-            onValueChange={toggleNotificationPermission}
+            onValueChange={val => {
+              if (val) {
+                handlePressPermission('notification');
+              } else {
+                toggleNotificationPermission(false);
+              }
+            }}
             trackColor={{ false: '#262D38', true: '#5E6AD2' }}
             thumbColor={notifAccess ? '#FFFFFF' : '#8E9BAC'}
           />
@@ -256,7 +335,7 @@ export const PermissionSetupScreen: React.FC<PermissionSetupScreenProps> = ({
           <View style={styles.cardTextContent}>
             <Text style={styles.cardTitle}>Ignore Battery Optimization</Text>
             <Text style={styles.cardDesc}>
-              Ensures FocusLock keeps running reliably in the background during long sessions.
+              Keeps your local session timer running reliably in the background without interruptions.
             </Text>
           </View>
         </View>
@@ -264,7 +343,7 @@ export const PermissionSetupScreen: React.FC<PermissionSetupScreenProps> = ({
           <TouchableOpacity
             activeOpacity={0.8}
             style={[styles.allowButton, batteryAccess && styles.grantedButton]}
-            onPress={requestBatteryPermission}
+            onPress={() => handlePressPermission('battery')}
           >
             <Text style={styles.allowButtonText}>
               {batteryAccess ? 'ALLOWED ✓' : 'ALLOW ACCESS'}
@@ -299,6 +378,14 @@ export const PermissionSetupScreen: React.FC<PermissionSetupScreenProps> = ({
             : 'Please grant Accessibility, Usage Access & Battery permissions above'}
         </Text>
       </View>
+
+      {/* Reusable Permission Disclosure Modal */}
+      <PermissionDisclosureModal
+        visible={activeModalType !== null}
+        type={activeModalType}
+        onClose={() => setActiveModalType(null)}
+        onConfirm={handleModalConfirm}
+      />
     </ScrollView>
   );
 };
@@ -337,8 +424,36 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: spacing.xl,
+    marginBottom: spacing.md,
     paddingHorizontal: spacing.sm,
+  },
+  privacyGuaranteeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(79, 140, 255, 0.08)',
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(79, 140, 255, 0.25)',
+  },
+  privacyGuaranteeIcon: {
+    fontSize: 24,
+    marginRight: spacing.md,
+  },
+  privacyGuaranteeTextCol: {
+    flex: 1,
+  },
+  privacyGuaranteeTitle: {
+    color: '#4F8CFF',
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  privacyGuaranteeSub: {
+    color: '#C9D1D9',
+    fontSize: 12.5,
+    lineHeight: 18,
   },
   mainTitle: {
     color: '#FFFFFF',
