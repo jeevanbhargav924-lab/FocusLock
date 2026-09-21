@@ -27,6 +27,7 @@ class BlockingActivity : AppCompatActivity() {
     }
 
     private lateinit var remainingTimeTv: TextView
+    private lateinit var subTv: TextView
     private val handler = Handler(Looper.getMainLooper())
     private val updateRunnable = object : Runnable {
         override fun run() {
@@ -42,6 +43,14 @@ class BlockingActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        overridePendingTransition(0, 0)
+
+        // Capture system back button to safely return home instead of opening the blocked app
+        onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                goHomeAndFinish()
+            }
+        })
 
         // Make Fullscreen
         requestWindowFeature(Window.FEATURE_NO_TITLE)
@@ -50,7 +59,7 @@ class BlockingActivity : AppCompatActivity() {
             WindowManager.LayoutParams.FLAG_FULLSCREEN
         )
 
-        val appName = intent.getStringExtra(EXTRA_BLOCKED_APP_NAME) ?: "Google"
+        val appName = intent.getStringExtra(EXTRA_BLOCKED_APP_NAME)?.takeIf { it.isNotBlank() } ?: "This App"
         val activeSession = FocusSessionManager.getActiveSession(this)
         val sessionGoal = activeSession?.title.takeIf { !it.isNullOrBlank() } ?: "Study"
         val randomQuote = MotivationQuotes.getRandomQuote()
@@ -130,7 +139,7 @@ class BlockingActivity : AppCompatActivity() {
         rootLayout.addView(accessRestrictedTv)
 
         // App Blocked Subtitle
-        val subTv = TextView(this).apply {
+        subTv = TextView(this).apply {
             text = "$appName is Locked"
             setTextColor(Color.WHITE)
             textSize = 26f
@@ -335,6 +344,22 @@ class BlockingActivity : AppCompatActivity() {
         super.onPause()
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        overridePendingTransition(0, 0)
+        val appName = intent.getStringExtra(EXTRA_BLOCKED_APP_NAME)?.takeIf { it.isNotBlank() } ?: "This App"
+        if (::subTv.isInitialized) {
+            subTv.text = "$appName is Locked"
+        }
+        updateTimerText()
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onBackPressed() {
+        goHomeAndFinish()
+    }
+
     private fun goHomeAndFinish() {
         val homeIntent = Intent(Intent.ACTION_MAIN).apply {
             addCategory(Intent.CATEGORY_HOME)
@@ -342,5 +367,6 @@ class BlockingActivity : AppCompatActivity() {
         }
         startActivity(homeIntent)
         finish()
+        overridePendingTransition(0, 0)
     }
 }

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { StatusBar, StyleSheet, View, NativeModules, Platform, Alert, Modal } from 'react-native';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { StatusBar, StyleSheet, View, NativeModules, Platform, Alert, Modal, BackHandler } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BottomNavigation, TabKey } from './src/components/BottomNavigation';
@@ -20,8 +20,9 @@ import { EndSessionCountdownModal } from './src/components/EndSessionCountdownMo
 
 import { FocusHistoryScreen } from './src/screens/FocusHistoryScreen';
 import { StatsScreen } from './src/screens/StatsScreen';
+import { StreaksAchievementsScreen } from './src/screens/StreaksAchievementsScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
-import { initDatabase, saveSessionRecord } from './src/services/database';
+import { initDatabase, saveSessionRecord, calculateFocusScore } from './src/services/database';
 import { Toast, ToastContainer } from './src/components/Toast';
 import { colors } from './src/theme';
 
@@ -41,10 +42,24 @@ function MainAppController(): React.JSX.Element {
   const insets = useSafeAreaInsets();
   const [flowStep, setFlowStep] = useState<AppFlowStep>('splash');
   const [activeTab, setActiveTab] = useState<TabKey>('home');
+  const [tabHistory, setTabHistory] = useState<TabKey[]>(['home']);
   const [hasSeenOnboarding, setHasSeenOnboarding] = useState<boolean>(false);
+
+  const tabHistoryRef = useRef<TabKey[]>(['home']);
+  const activeTabRef = useRef<TabKey>('home');
+  const flowStepRef = useRef<AppFlowStep>('splash');
+
+  const showReflectionCountdownRef = useRef(false);
+  const passcodeModalVisibleRef = useRef(false);
+  const showCreateSessionRef = useRef(false);
+  const showAllowedAppsRef = useRef(false);
+  const showSessionCompletedRef = useRef(false);
+  const showBlockedOverlayRef = useRef(false);
+  const showAchievementsModalRef = useRef(false);
 
   // Session & Protection States
   const [isSessionActive, setIsSessionActive] = useState<boolean>(false);
+  const [isStrictModeActive, setIsStrictModeActive] = useState<boolean>(false);
   const [sessionMinutes, setSessionMinutes] = useState<number>(60);
   const [activeSessionTitle, setActiveSessionTitle] = useState<string>('Deep Focus Session');
   const [remainingTimeText, setRemainingTimeText] = useState<string>('00:00:00');
@@ -57,7 +72,7 @@ function MainAppController(): React.JSX.Element {
   const [showSessionCompleted, setShowSessionCompleted] = useState<boolean>(false);
   const [showAllowedApps, setShowAllowedApps] = useState<boolean>(false);
   const [showBlockedOverlay, setShowBlockedOverlay] = useState<boolean>(false);
-  const [showSettings, setShowSettings] = useState<boolean>(false);
+  const [showAchievementsModal, setShowAchievementsModal] = useState<boolean>(false);
   const [pendingTarget, setPendingTarget] = useState<'createSession' | 'allowedApps' | null>(null);
 
   // Security Passcode Modal State
@@ -82,13 +97,125 @@ function MainAppController(): React.JSX.Element {
     completedMinutes: number;
     remainingMinutes: number;
     blockedAttempts: number;
+    sessionTitle?: string;
+    emergencyUnlocks?: number;
+    score?: number;
+    topAttemptedApp?: string;
   }>({
     isManualEnd: false,
     plannedMinutes: 25,
     completedMinutes: 25,
     remainingMinutes: 0,
     blockedAttempts: 0,
+    sessionTitle: 'Deep Focus Session',
+    emergencyUnlocks: 0,
+    score: 100,
   });
+
+  // Keep navigation and modal refs in sync
+  useEffect(() => { tabHistoryRef.current = tabHistory; }, [tabHistory]);
+  useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
+  useEffect(() => { flowStepRef.current = flowStep; }, [flowStep]);
+  useEffect(() => { showReflectionCountdownRef.current = showReflectionCountdown; }, [showReflectionCountdown]);
+  useEffect(() => { passcodeModalVisibleRef.current = passcodeModalVisible; }, [passcodeModalVisible]);
+  useEffect(() => { showCreateSessionRef.current = showCreateSession; }, [showCreateSession]);
+  useEffect(() => { showAllowedAppsRef.current = showAllowedApps; }, [showAllowedApps]);
+  useEffect(() => { showSessionCompletedRef.current = showSessionCompleted; }, [showSessionCompleted]);
+  useEffect(() => { showBlockedOverlayRef.current = showBlockedOverlay; }, [showBlockedOverlay]);
+  useEffect(() => { showAchievementsModalRef.current = showAchievementsModal; }, [showAchievementsModal]);
+
+  // Navigate to tab and update history stack
+  const navigateToTab = useCallback((targetTab: TabKey) => {
+    setActiveTab(currentTab => {
+      if (currentTab === targetTab) return currentTab;
+
+      if (targetTab === 'home') {
+        tabHistoryRef.current = ['home'];
+        setTabHistory(['home']);
+        return targetTab;
+      }
+
+      const existingIndex = tabHistoryRef.current.indexOf(targetTab);
+      let nextHistory: TabKey[];
+      if (existingIndex !== -1) {
+        nextHistory = tabHistoryRef.current.slice(0, existingIndex + 1);
+      } else {
+        nextHistory = [...tabHistoryRef.current, targetTab];
+      }
+      tabHistoryRef.current = nextHistory;
+      setTabHistory(nextHistory);
+      return targetTab;
+    });
+  }, []);
+
+  // Back action: modals -> previous tabs -> exit on home
+  const handleGoBack = useCallback(() => {
+    if (showReflectionCountdownRef.current) {
+      setShowReflectionCountdown(false);
+      return true;
+    }
+    if (passcodeModalVisibleRef.current) {
+      setPasscodeModalVisible(false);
+      setPendingAction(null);
+      return true;
+    }
+    if (showAchievementsModalRef.current) {
+      setShowAchievementsModal(false);
+      return true;
+    }
+    if (showCreateSessionRef.current) {
+      setShowCreateSession(false);
+      return true;
+    }
+    if (showAllowedAppsRef.current) {
+      setShowAllowedApps(false);
+      return true;
+    }
+    if (showSessionCompletedRef.current) {
+      setShowSessionCompleted(false);
+      navigateToTab('home');
+      return true;
+    }
+    if (showBlockedOverlayRef.current) {
+      return true;
+    }
+
+    if (tabHistoryRef.current.length > 1) {
+      const nextHistory = [...tabHistoryRef.current];
+      nextHistory.pop();
+      const previousTab = nextHistory[nextHistory.length - 1];
+      tabHistoryRef.current = nextHistory;
+      setTabHistory(nextHistory);
+      setActiveTab(previousTab);
+      return true;
+    }
+
+    if (activeTabRef.current !== 'home') {
+      tabHistoryRef.current = ['home'];
+      setTabHistory(['home']);
+      setActiveTab('home');
+      return true;
+    }
+
+    return false;
+  }, [navigateToTab]);
+
+  // Intercept Android hardware / gesture back button
+  useEffect(() => {
+    const onBackPress = () => {
+      if (flowStepRef.current !== 'main') {
+        return false;
+      }
+      return handleGoBack();
+    };
+
+    const backHandlerSubscription = BackHandler.addEventListener(
+      'hardwareBackPress',
+      onBackPress
+    );
+
+    return () => backHandlerSubscription.remove();
+  }, [handleGoBack]);
 
   // Check Onboarding & User Authentication State on Mount
   useEffect(() => {
@@ -181,8 +308,11 @@ function MainAppController(): React.JSX.Element {
     return true;
   };
 
-  const handleOpenCreateSession = () => {
-    setActiveTab('focus');
+  const handleOpenCreateSession = (minutes?: number) => {
+    if (typeof minutes === 'number' && minutes > 0) {
+      setSessionMinutes(minutes);
+    }
+    navigateToTab('focus');
   };
 
   const handleOpenAllowedApps = () => {
@@ -210,10 +340,11 @@ function MainAppController(): React.JSX.Element {
     const finalTitle = sessionTitle.trim() || 'Deep Focus Session';
     setSessionMinutes(minutes);
     setActiveSessionTitle(finalTitle);
+    setIsStrictModeActive(strictMode);
     setIsSessionActive(true);
     setShowCreateSession(false);
     setShowAllowedApps(false);
-    setActiveTab('focus');
+    navigateToTab('focus');
 
     if (Platform.OS === 'android' && NativeModules.PermissionModule?.startFocusSession) {
       try {
@@ -297,7 +428,6 @@ function MainAppController(): React.JSX.Element {
 
     const elapsedSec = pendingManualEndData.elapsedSec || 0;
     const remainingSec = pendingManualEndData.remainingSec || 0;
-    const blockedCount = pendingManualEndData.blockedCount || 0;
 
     const completedMins = Math.max(1, Math.floor(elapsedSec / 60));
     const remainingMins = Math.max(0, Math.ceil(remainingSec / 60));
@@ -313,17 +443,45 @@ function MainAppController(): React.JSX.Element {
           );
           return;
         }
-      } catch (e) {}
+      } catch {}
     }
 
-    // 2. Mark active session stopped in Native Android SQLite DB & Service
-    if (Platform.OS === 'android' && NativeModules.PermissionModule?.stopFocusSession) {
+    // 2. Fetch real-time distraction metrics from native layer
+    let blockedAttempts = pendingManualEndData.blockedCount || 0;
+    let topAttemptedApp = '';
+    if (Platform.OS === 'android' && NativeModules.PermissionModule?.getActiveSessionDistractions) {
       try {
-        await NativeModules.PermissionModule.stopFocusSession();
-      } catch (e) {}
+        const distData = await NativeModules.PermissionModule.getActiveSessionDistractions();
+        if (distData && typeof distData.totalCount === 'number') {
+          blockedAttempts = Math.max(blockedAttempts, distData.totalCount);
+          topAttemptedApp = distData.topApp || '';
+        }
+      } catch {}
     }
 
-    // 3. Save completed session record into JS SQLite database with status 'ended'
+    // 3. Compute deterministic focus score
+    const scoreBreakdown = calculateFocusScore({
+      plannedMinutes: sessionMinutes,
+      actualMinutes: completedMins,
+      status: 'ended',
+      distractionAttempts: blockedAttempts,
+      emergencyUnlocks: 1,
+      strictMode: isStrictModeActive,
+    });
+    const computedScore = scoreBreakdown.totalScore;
+
+    // 4. Mark active session stopped in Native Android SQLite DB & Service with metrics
+    if (Platform.OS === 'android') {
+      try {
+        if (NativeModules.PermissionModule?.stopFocusSessionWithMetrics) {
+          await NativeModules.PermissionModule.stopFocusSessionWithMetrics(completedMins, computedScore, blockedAttempts);
+        } else if (NativeModules.PermissionModule?.stopFocusSession) {
+          await NativeModules.PermissionModule.stopFocusSession();
+        }
+      } catch {}
+    }
+
+    // 5. Save completed session record into JS SQLite database with status 'ended'
     const now = new Date();
     const startTimeStr = new Date(now.getTime() - elapsedSec * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const endTimeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -338,8 +496,8 @@ function MainAppController(): React.JSX.Element {
         planned_minutes: sessionMinutes,
         actual_minutes: completedMins,
         status: 'ended', // Manual end is marked as 'ended'
-        score: Math.round((completedMins / Math.max(1, sessionMinutes)) * 100),
-        blocked_attempts: blockedCount,
+        score: computedScore,
+        blocked_attempts: blockedAttempts,
       },
       currentUid
     );
@@ -351,16 +509,20 @@ function MainAppController(): React.JSX.Element {
         if (remaining < 9990) {
           Toast.info('Emergency End Used ⏱', `${remaining} emergency session end(s) remaining today.`);
         }
-      } catch (e) {}
+      } catch {}
     }
 
-    // 4. Configure completionMeta for manual end screen
+    // 6. Configure completionMeta for manual end screen
     setCompletionMeta({
       isManualEnd: true,
       plannedMinutes: sessionMinutes,
       completedMinutes: completedMins,
       remainingMinutes: remainingMins,
-      blockedAttempts: blockedCount,
+      blockedAttempts: blockedAttempts,
+      sessionTitle: activeSessionTitle || 'Deep Focus Session',
+      emergencyUnlocks: 1,
+      score: computedScore,
+      topAttemptedApp,
     });
 
     setIsSessionActive(false);
@@ -368,18 +530,44 @@ function MainAppController(): React.JSX.Element {
   };
 
   const handleNaturalSessionCompletion = async () => {
-    // 1. Mark active session completed in Native Android SQLite DB & Service
+    // 1. Fetch real-time distraction metrics from native layer
+    let blockedAttempts = 0;
+    let topAttemptedApp = '';
+    if (Platform.OS === 'android' && NativeModules.PermissionModule?.getActiveSessionDistractions) {
+      try {
+        const distData = await NativeModules.PermissionModule.getActiveSessionDistractions();
+        if (distData && typeof distData.totalCount === 'number') {
+          blockedAttempts = distData.totalCount;
+          topAttemptedApp = distData.topApp || '';
+        }
+      } catch {}
+    }
+
+    // 2. Compute deterministic focus score
+    const scoreBreakdown = calculateFocusScore({
+      plannedMinutes: sessionMinutes,
+      actualMinutes: sessionMinutes,
+      status: 'completed',
+      distractionAttempts: blockedAttempts,
+      emergencyUnlocks: 0,
+      strictMode: isStrictModeActive,
+    });
+    const computedScore = scoreBreakdown.totalScore;
+
+    // 3. Mark active session completed in Native Android SQLite DB & Service
     if (Platform.OS === 'android') {
       try {
-        if (NativeModules.PermissionModule?.completeFocusSession) {
+        if (NativeModules.PermissionModule?.completeFocusSessionWithMetrics) {
+          await NativeModules.PermissionModule.completeFocusSessionWithMetrics(computedScore, blockedAttempts);
+        } else if (NativeModules.PermissionModule?.completeFocusSession) {
           await NativeModules.PermissionModule.completeFocusSession();
         } else if (NativeModules.PermissionModule?.stopFocusSession) {
           await NativeModules.PermissionModule.stopFocusSession();
         }
-      } catch (e) {}
+      } catch {}
     }
 
-    // 2. Save completed session record into database with status 'completed'
+    // 4. Save completed session record into database with status 'completed'
     const now = new Date();
     const startTimeStr = new Date(now.getTime() - sessionMinutes * 60 * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const endTimeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -394,19 +582,23 @@ function MainAppController(): React.JSX.Element {
         planned_minutes: sessionMinutes,
         actual_minutes: sessionMinutes,
         status: 'completed', // Full duration completed naturally
-        score: 100,
-        blocked_attempts: 0,
+        score: computedScore,
+        blocked_attempts: blockedAttempts,
       },
       currentUid
     );
 
-    // 3. Configure completionMeta for natural completion screen
+    // 5. Configure completionMeta for natural completion screen
     setCompletionMeta({
       isManualEnd: false,
       plannedMinutes: sessionMinutes,
       completedMinutes: sessionMinutes,
       remainingMinutes: 0,
-      blockedAttempts: 0,
+      blockedAttempts: blockedAttempts,
+      sessionTitle: activeSessionTitle || 'Deep Focus Session',
+      emergencyUnlocks: 0,
+      score: computedScore,
+      topAttemptedApp,
     });
 
     setIsSessionActive(false);
@@ -454,8 +646,9 @@ function MainAppController(): React.JSX.Element {
             onStartSession={handleOpenCreateSession}
             onNavigateToApps={handleOpenAllowedApps}
             isSessionActive={isSessionActive}
-            onOpenActiveSession={() => setActiveTab('focus')}
-            onOpenHistory={() => setActiveTab('history')}
+            onOpenActiveSession={() => navigateToTab('focus')}
+            onOpenHistory={() => navigateToTab('history')}
+            onOpenAchievements={() => setShowAchievementsModal(true)}
             remainingTimeText={remainingTimeText}
           />
         );
@@ -468,7 +661,7 @@ function MainAppController(): React.JSX.Element {
           />
         ) : (
           <CreateSessionScreen
-            onCancel={() => setActiveTab('home')}
+            onCancel={handleGoBack}
             onStartCreatedSession={handleStartActiveSession}
             onNavigateToAllowedApps={handleOpenAllowedApps}
             allowedAppsCount={allowedAppsCount}
@@ -476,23 +669,28 @@ function MainAppController(): React.JSX.Element {
         );
 
       case 'history':
-        return <FocusHistoryScreen onNavigateToStats={() => setActiveTab('stats')} />;
+        return <FocusHistoryScreen onNavigateToStats={() => navigateToTab('stats')} />;
       case 'stats':
-        return <StatsScreen />;
+        return (
+          <StatsScreen
+            onOpenAchievements={() => setShowAchievementsModal(true)}
+          />
+        );
       case 'settings':
         return (
           <SettingsScreen
-            onBack={() => setActiveTab('home')}
+            onBack={handleGoBack}
           />
         );
       default:
         return (
           <HomeScreen
             onStartSession={handleOpenCreateSession}
-            onNavigateToApps={() => setShowAllowedApps(true)}
+            onNavigateToApps={handleOpenAllowedApps}
             isSessionActive={isSessionActive}
-            onOpenActiveSession={() => setActiveTab('focus')}
-            onOpenHistory={() => setActiveTab('history')}
+            onOpenActiveSession={() => navigateToTab('focus')}
+            onOpenHistory={() => navigateToTab('history')}
+            onOpenAchievements={() => setShowAchievementsModal(true)}
             remainingTimeText={remainingTimeText}
           />
         );
@@ -507,13 +705,12 @@ function MainAppController(): React.JSX.Element {
       {!showCreateSession &&
         !showSessionCompleted &&
         !showAllowedApps &&
-        !showBlockedOverlay && (
-          <View style={{ paddingBottom: insets.bottom }}>
-            <BottomNavigation
-              activeTab={activeTab}
-              onSelectTab={setActiveTab}
-            />
-          </View>
+        !showBlockedOverlay &&
+        !showAchievementsModal && (
+          <BottomNavigation
+            activeTab={activeTab}
+            onSelectTab={navigateToTab}
+          />
         )}
 
       {/* Full-Screen Overlays */}
@@ -542,15 +739,19 @@ function MainAppController(): React.JSX.Element {
             completedMinutes={completionMeta.completedMinutes}
             remainingMinutes={completionMeta.remainingMinutes}
             durationMinutes={sessionMinutes}
+            sessionTitle={completionMeta.sessionTitle}
             blockedAttempts={completionMeta.blockedAttempts}
-            timeSavedMinutes={Math.round(sessionMinutes * 0.8)}
+            topAttemptedApp={completionMeta.topAttemptedApp}
+            emergencyUnlocks={completionMeta.emergencyUnlocks}
+            score={completionMeta.score}
+            timeSavedMinutes={Math.round(completionMeta.completedMinutes * 0.8)}
             onStartAnotherSession={() => {
               setShowSessionCompleted(false);
               setShowCreateSession(true);
             }}
             onReturnHome={() => {
               setShowSessionCompleted(false);
-              setActiveTab('home');
+              navigateToTab('home');
             }}
           />
         </View>
@@ -583,6 +784,18 @@ function MainAppController(): React.JSX.Element {
             sessionTitle={activeSessionTitle}
             remainingTimeText={remainingTimeText}
             onDismiss={() => setShowBlockedOverlay(false)}
+          />
+        </View>
+      </Modal>
+
+      {/* Gamification Hub: Streaks & Achievements Modal */}
+      <Modal
+        visible={showAchievementsModal}
+        animationType="slide"
+        onRequestClose={() => setShowAchievementsModal(false)}>
+        <View style={styles.fullModalContainer}>
+          <StreaksAchievementsScreen
+            onClose={() => setShowAchievementsModal(false)}
           />
         </View>
       </Modal>

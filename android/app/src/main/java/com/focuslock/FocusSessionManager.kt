@@ -1,7 +1,10 @@
 package com.focuslock
 
 import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
+import android.content.pm.PackageManager
+import android.os.Build
 import android.util.Log
 import org.json.JSONArray
 import org.json.JSONObject
@@ -38,11 +41,71 @@ object FocusSessionManager {
     private val SYSTEM_EXCLUDED_PACKAGES = setOf(
         "com.android.systemui",
         "com.android.settings",
-        "com.google.android.inputmethod.latin",
-        "com.sec.android.inputmethod",
+        "com.google.android.googlequicksearchbox", // Google App / Home Screen Search Bar / Assistant
+        "com.google.android.apps.nexuslauncher",   // Pixel Launcher
+        "com.android.launcher",
+        "com.android.launcher3",
+        "com.sec.android.app.launcher",            // Samsung One UI Home
+        "com.miui.home",                           // Xiaomi MIUI / HyperOS Launcher
+        "com.huawei.android.launcher",             // Huawei Launcher
+        "com.oppo.launcher",                       // Oppo Launcher
+        "com.coloros.launcher",                    // ColorOS Launcher
+        "com.oneplus.launcher",                    // OnePlus Launcher
+        "com.motorola.launcher3",                  // Motorola Launcher
+        "com.transsion.launcher",                  // Tecno/Infinix Launcher
+        "com.google.android.inputmethod.latin",    // Gboard
+        "com.sec.android.inputmethod",             // Samsung Keyboard
         "com.google.android.permissioncontroller",
-        "com.android.permissioncontroller"
+        "com.android.permissioncontroller",
+        "com.google.android.packageinstaller",
+        "com.android.packageinstaller",
+        "com.google.android.dialer",               // Phone calls
+        "com.android.dialer",
+        "com.android.phone",
+        "com.android.server.telecom",
+        "com.samsung.android.dialer",
+        "com.android.emergency",
+        "android"
     )
+
+    fun getDefaultLauncherPackage(context: Context): String? {
+        return try {
+            val intent = Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_HOME)
+            }
+            val resolveInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                context.packageManager.resolveActivity(intent, PackageManager.ResolveInfoFlags.of(PackageManager.MATCH_DEFAULT_ONLY.toLong()))
+            } else {
+                context.packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
+            }
+            resolveInfo?.activityInfo?.packageName
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    fun isSystemOrLauncherPackage(context: Context, packageName: String): Boolean {
+        val pkgLower = packageName.lowercase()
+        val ownPkg = context.packageName.lowercase()
+
+        if (pkgLower == ownPkg) return true
+        if (SYSTEM_EXCLUDED_PACKAGES.contains(pkgLower)) return true
+        if (pkgLower.contains("launcher") ||
+            pkgLower.contains("home") ||
+            pkgLower.contains("systemui") ||
+            pkgLower.contains("inputmethod") ||
+            pkgLower.contains("quicksearchbox") ||
+            pkgLower.contains("dialer") ||
+            pkgLower.contains("telecom") ||
+            pkgLower.contains("emergency") ||
+            pkgLower.contains("permissioncontroller") ||
+            pkgLower.contains("packageinstaller")) return true
+
+        val defaultLauncher = getDefaultLauncherPackage(context)?.lowercase()
+        if (defaultLauncher != null && pkgLower == defaultLauncher) return true
+
+        return false
+    }
 
     private fun getPrefs(context: Context): SharedPreferences {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -190,11 +253,12 @@ object FocusSessionManager {
         val durationMillis = durationMinutes * 60 * 1000L
         val endTime = now + durationMillis
 
-        val finalBlockedApps = if (blockedApps.isEmpty()) {
+        val cleanBlocked = blockedApps.filter { !isSystemOrLauncherPackage(context, it) }.toSet()
+        val finalBlockedApps = if (cleanBlocked.isEmpty()) {
             getDefaultBlockedApps(context)
         } else {
-            saveDefaultBlockedApps(context, blockedApps)
-            blockedApps
+            saveDefaultBlockedApps(context, cleanBlocked)
+            cleanBlocked
         }
 
         val session = FocusSession(
@@ -235,7 +299,11 @@ object FocusSessionManager {
         return session
     }
 
+    @Volatile
+    private var inMemoryActiveSession: FocusSession? = null
+
     fun saveSession(context: Context, session: FocusSession?) {
+        inMemoryActiveSession = if (session?.isActive == true) session else null
         val prefs = getPrefs(context)
         if (session == null || !session.isActive) {
             prefs.edit().remove(KEY_ACTIVE_SESSION).apply()
@@ -269,15 +337,25 @@ object FocusSessionManager {
     }
 
     fun getActiveSession(context: Context): FocusSession? {
+        val cached = inMemoryActiveSession
+        val now = System.currentTimeMillis()
+        if (cached != null) {
+            if (now < cached.endTime && cached.isActive) {
+                return cached
+            } else {
+                inMemoryActiveSession = null
+            }
+        }
+
         val prefs = getPrefs(context)
         val jsonStr = prefs.getString(KEY_ACTIVE_SESSION, null) ?: return null
 
         return try {
             val json = JSONObject(jsonStr)
             val endTime = json.optLong("endTime", 0L)
-            val now = System.currentTimeMillis()
 
             if (now >= endTime) {
+                inMemoryActiveSession = null
                 val sessionId = json.optString("sessionId", "")
                 if (sessionId.isNotEmpty()) {
                     val db = FocusDatabaseHelper(context)
@@ -302,7 +380,7 @@ object FocusSessionManager {
                     }
                 }
 
-                FocusSession(
+                val session = FocusSession(
                     sessionId = json.getString("sessionId"),
                     title = json.optString("title", "Deep Focus Session"),
                     startTime = json.getLong("startTime"),
@@ -314,6 +392,8 @@ object FocusSessionManager {
                     sessionPin = json.optString("sessionPin", ""),
                     isActive = json.getBoolean("isActive")
                 )
+                inMemoryActiveSession = session
+                session
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -321,7 +401,107 @@ object FocusSessionManager {
         }
     }
 
-    fun endSession(context: Context, status: String = "ended") {
+    // Debouncing state for distraction attempts
+    private var lastBlockedPkg: String? = null
+    private var lastBlockedTimestamp: Long = 0L
+    private const val DEBOUNCE_WINDOW_MS = 2000L
+
+    @Synchronized
+    fun recordDistractionAttempt(context: Context, packageName: String): Boolean {
+        val session = getActiveSession(context) ?: return false
+        if (!session.isActive) return false
+
+        val now = System.currentTimeMillis()
+        if (packageName.equals(lastBlockedPkg, ignoreCase = true) && (now - lastBlockedTimestamp < DEBOUNCE_WINDOW_MS)) {
+            Log.d("FocusSessionManager", "Debounced duplicate distraction event for: $packageName")
+            return false
+        }
+
+        lastBlockedPkg = packageName
+        lastBlockedTimestamp = now
+
+        try {
+            val db = FocusDatabaseHelper(context)
+            db.recordDistractionAttempt(session.sessionId, packageName, now)
+            Log.d("FocusSessionManager", "Recorded distraction attempt: session=${session.sessionId}, pkg=$packageName")
+            return true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return false
+        }
+    }
+
+    fun getActiveSessionDistractions(context: Context): Map<String, Any> {
+        val session = getActiveSession(context)
+        val result = mutableMapOf<String, Any>()
+        if (session == null || !session.isActive) {
+            result["totalCount"] = 0
+            result["topApp"] = ""
+            result["topAppCount"] = 0
+            return result
+        }
+
+        val db = FocusDatabaseHelper(context)
+        val totalCount = db.getDistractionCountForSession(session.sessionId)
+        val summary = db.getDistractionSummaryForSession(session.sessionId)
+        var topApp = ""
+        var topAppCount = 0
+
+        if (summary.isNotEmpty()) {
+            val first = summary[0]
+            val pkg = first["packageName"] as? String ?: ""
+            topAppCount = first["count"] as? Int ?: 0
+            topApp = try {
+                val pm = context.packageManager
+                val appInfo = pm.getApplicationInfo(pkg, 0)
+                pm.getApplicationLabel(appInfo).toString()
+            } catch (e: Exception) {
+                pkg
+            }
+        }
+
+        result["totalCount"] = totalCount
+        result["topApp"] = topApp
+        result["topAppCount"] = topAppCount
+        return result
+    }
+
+    fun getSessionDistractions(context: Context, sessionId: String): Map<String, Any> {
+        val db = FocusDatabaseHelper(context)
+        val totalCount = db.getDistractionCountForSession(sessionId)
+        val summary = db.getDistractionSummaryForSession(sessionId)
+        val formattedSummary = mutableListOf<Map<String, Any>>()
+
+        for (item in summary) {
+            val pkg = item["packageName"] as? String ?: ""
+            val count = item["count"] as? Int ?: 0
+            val appName = try {
+                val pm = context.packageManager
+                val appInfo = pm.getApplicationInfo(pkg, 0)
+                pm.getApplicationLabel(appInfo).toString()
+            } catch (e: Exception) {
+                pkg
+            }
+            formattedSummary.add(mapOf(
+                "packageName" to pkg,
+                "appName" to appName,
+                "count" to count
+            ))
+        }
+
+        return mapOf(
+            "totalCount" to totalCount,
+            "summary" to formattedSummary
+        )
+    }
+
+    fun endSession(
+        context: Context,
+        status: String = "ended",
+        actualMinutes: Int = -1,
+        score: Int = -1,
+        blockedAttempts: Int = -1
+    ) {
         val prefs = getPrefs(context)
         val jsonStr = prefs.getString(KEY_ACTIVE_SESSION, null)
         if (jsonStr != null) {
@@ -330,12 +510,14 @@ object FocusSessionManager {
                 val sessionId = json.optString("sessionId", "")
                 if (sessionId.isNotEmpty()) {
                     val db = FocusDatabaseHelper(context)
-                    db.markSessionCompleted(sessionId, status)
+                    val realBlocked = if (blockedAttempts >= 0) blockedAttempts else db.getDistractionCountForSession(sessionId)
+                    db.markSessionCompleted(sessionId, status, actualMinutes, score, realBlocked)
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
             }
         }
+        inMemoryActiveSession = null
         prefs.edit().remove(KEY_ACTIVE_SESSION).apply()
     }
 
@@ -343,19 +525,19 @@ object FocusSessionManager {
         val session = getActiveSession(context) ?: return false
         if (!session.isActive) return false
 
+        // 1. Guard check: System services, Google Search widget, and Launchers are NEVER blocked
+        if (isSystemOrLauncherPackage(context, packageName)) {
+            return false
+        }
+
         val pkgLower = packageName.lowercase()
-        val ownPkg = context.packageName.lowercase()
 
-        if (pkgLower == ownPkg) return false
-        if (SYSTEM_EXCLUDED_PACKAGES.contains(pkgLower)) return false
-        if (pkgLower.contains("launcher") || pkgLower.contains("home") || pkgLower.contains("systemui") || pkgLower.contains("inputmethod")) return false
-
-        // 1. Direct Package Match
+        // 2. Direct Package Match
         if (session.blockedApps.contains(packageName) || session.blockedApps.contains(pkgLower)) {
             return true
         }
 
-        // 2. Keyword & Alias Match
+        // 3. Keyword & Alias Match
         for (blocked in session.blockedApps) {
             val bLower = blocked.lowercase()
             if (bLower.contains("chrome") && pkgLower.contains("chrome")) return true
@@ -367,7 +549,7 @@ object FocusSessionManager {
             if (bLower.contains("tiktok") && (pkgLower.contains("musically") || pkgLower.contains("tiktok"))) return true
         }
 
-        // 3. Allowed Apps constraint
+        // 4. Allowed Apps constraint (whitelist mode)
         if (session.allowedApps.isNotEmpty()) {
             val isAllowedDirect = session.allowedApps.contains(packageName) || session.allowedApps.contains(pkgLower)
             var isAllowedAlias = false
@@ -391,7 +573,9 @@ object FocusSessionManager {
     fun saveDefaultBlockedApps(context: Context, blockedApps: Set<String>) {
         val prefs = getPrefs(context)
         val jsonArr = JSONArray()
-        blockedApps.forEach { jsonArr.put(it) }
+        blockedApps
+            .filter { !isSystemOrLauncherPackage(context, it) }
+            .forEach { jsonArr.put(it) }
         prefs.edit().putString(KEY_DEFAULT_BLOCKED_APPS, jsonArr.toString()).apply()
     }
 
@@ -403,7 +587,10 @@ object FocusSessionManager {
                 val set = mutableSetOf<String>()
                 val jsonArr = JSONArray(jsonStr)
                 for (i in 0 until jsonArr.length()) {
-                    set.add(jsonArr.getString(i))
+                    val pkg = jsonArr.getString(i)
+                    if (!isSystemOrLauncherPackage(context, pkg)) {
+                        set.add(pkg)
+                    }
                 }
                 if (set.isNotEmpty()) return set
             } catch (e: Exception) {

@@ -12,6 +12,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { spacing, colors } from '../theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BackIcon} from '../utils/Icons';
 
 export interface AppItem {
@@ -43,6 +44,7 @@ export const AllowedAppsScreen: React.FC<AllowedAppsScreenProps> = ({
   onSaveAllowedApps,
   onUpdateAllowedApps,
 }) => {
+  const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [apps, setApps] = useState<AppItem[]>([]);
@@ -138,12 +140,41 @@ export const AllowedAppsScreen: React.FC<AllowedAppsScreenProps> = ({
   const blockedApps = filteredApps.filter(app => !app.isAllowed);
 
   const handleSave = () => {
+    const SYSTEM_EXCLUDED = [
+      'com.google.android.googlequicksearchbox',
+      'com.android.systemui',
+      'com.android.settings',
+      'com.google.android.apps.nexuslauncher',
+      'com.sec.android.app.launcher',
+      'com.android.launcher',
+      'com.android.launcher3',
+      'com.google.android.dialer',
+      'com.android.dialer',
+      'com.android.phone',
+      'com.android.server.telecom',
+    ];
+
     const allowed = apps
       .filter(a => a.isAllowed)
       .map(a => a.packageName || a.id);
     const blocked = apps
       .filter(a => !a.isAllowed)
-      .map(a => a.packageName || a.id);
+      .map(a => a.packageName || a.id)
+      .filter(pkg => {
+        const pLower = pkg.toLowerCase();
+        if (SYSTEM_EXCLUDED.includes(pLower)) return false;
+        if (
+          pLower.includes('launcher') ||
+          pLower.includes('home') ||
+          pLower.includes('systemui') ||
+          pLower.includes('quicksearchbox') ||
+          pLower.includes('dialer') ||
+          pLower.includes('telecom')
+        ) {
+          return false;
+        }
+        return true;
+      });
 
     if (onSaveAllowedApps) {
       onSaveAllowedApps(allowed.length, blocked, allowed);
@@ -261,7 +292,11 @@ export const AllowedAppsScreen: React.FC<AllowedAppsScreenProps> = ({
       </ScrollView>
 
       {/* Fixed Bottom Save Action */}
-      <View style={styles.fixedBottomContainer}>
+      <View
+        style={[
+          styles.fixedBottomContainer,
+          { paddingBottom: Math.max(spacing.md, insets.bottom + 10) },
+        ]}>
         <TouchableOpacity
           activeOpacity={0.85}
           style={styles.saveBtn}

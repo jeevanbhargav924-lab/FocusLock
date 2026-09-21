@@ -55,7 +55,11 @@
         android:name=".BlockingActivity"
         android:exported="false"
         android:theme="@style/Theme.AppCompat.NoActionBar"
-        android:launchMode="singleTask"/>
+        android:launchMode="singleTask"
+        android:taskAffinity="com.focuslock.blocking"
+        android:excludeFromRecents="true"
+        android:showWhenLocked="true"
+        android:turnScreenOn="true"/>
 
       <activity
         android:name=".MainActivity"

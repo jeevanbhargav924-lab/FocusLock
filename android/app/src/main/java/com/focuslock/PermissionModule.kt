@@ -205,8 +205,13 @@ class PermissionModule(reactContext: ReactApplicationContext)
 
     @ReactMethod
     fun stopFocusSession(promise: Promise) {
+        stopFocusSessionWithMetrics(-1, -1, -1, promise)
+    }
+
+    @ReactMethod
+    fun stopFocusSessionWithMetrics(actualMinutes: Int, score: Int, blockedAttempts: Int, promise: Promise) {
         try {
-            FocusSessionManager.endSession(reactApplicationContext, "ended")
+            FocusSessionManager.endSession(reactApplicationContext, "ended", actualMinutes, score, blockedAttempts)
             val intent = Intent(reactApplicationContext, FocusForegroundService::class.java).apply {
                 action = FocusForegroundService.ACTION_STOP_SERVICE
             }
@@ -219,8 +224,15 @@ class PermissionModule(reactContext: ReactApplicationContext)
 
     @ReactMethod
     fun completeFocusSession(promise: Promise) {
+        completeFocusSessionWithMetrics(-1, -1, promise)
+    }
+
+    @ReactMethod
+    fun completeFocusSessionWithMetrics(score: Int, blockedAttempts: Int, promise: Promise) {
         try {
-            FocusSessionManager.endSession(reactApplicationContext, "completed")
+            val session = FocusSessionManager.getActiveSession(reactApplicationContext)
+            val duration = session?.durationMinutes ?: -1
+            FocusSessionManager.endSession(reactApplicationContext, "completed", duration, score, blockedAttempts)
             val intent = Intent(reactApplicationContext, FocusForegroundService::class.java).apply {
                 action = FocusForegroundService.ACTION_STOP_SERVICE
             }
@@ -238,6 +250,11 @@ class PermissionModule(reactContext: ReactApplicationContext)
             if (session == null) {
                 promise.resolve(null)
             } else {
+                val distMap = FocusSessionManager.getActiveSessionDistractions(reactApplicationContext)
+                val totalBlocked = distMap["totalCount"] as? Int ?: 0
+                val topApp = distMap["topApp"] as? String ?: ""
+                val topAppCount = distMap["topAppCount"] as? Int ?: 0
+
                 val map = WritableNativeMap().apply {
                     putString("sessionId", session.sessionId)
                     putString("title", session.title)
@@ -246,11 +263,68 @@ class PermissionModule(reactContext: ReactApplicationContext)
                     putInt("durationMinutes", session.durationMinutes)
                     putBoolean("strictMode", session.strictMode)
                     putBoolean("isActive", session.isActive)
+                    putInt("blockedAttempts", totalBlocked)
+                    putString("topAttemptedApp", topApp)
+                    putInt("topAttemptedCount", topAppCount)
                 }
                 promise.resolve(map)
             }
         } catch (e: Exception) {
             promise.reject("ERR_GET_SESSION", e.message)
+        }
+    }
+
+    @ReactMethod
+    fun getActiveSessionDistractions(promise: Promise) {
+        try {
+            val data = FocusSessionManager.getActiveSessionDistractions(reactApplicationContext)
+            val map = WritableNativeMap().apply {
+                putInt("totalCount", data["totalCount"] as? Int ?: 0)
+                putString("topApp", data["topApp"] as? String ?: "")
+                putInt("topAppCount", data["topAppCount"] as? Int ?: 0)
+            }
+            promise.resolve(map)
+        } catch (e: Exception) {
+            promise.reject("ERR_DISTRACTIONS", e.message)
+        }
+    }
+
+    @ReactMethod
+    fun getSessionDistractions(sessionId: String, promise: Promise) {
+        try {
+            val data = FocusSessionManager.getSessionDistractions(reactApplicationContext, sessionId)
+            val totalCount = data["totalCount"] as? Int ?: 0
+            @Suppress("UNCHECKED_CAST")
+            val summary = data["summary"] as? List<Map<String, Any>> ?: emptyList()
+
+            val array = WritableNativeArray()
+            for (item in summary) {
+                val itemMap = WritableNativeMap().apply {
+                    putString("packageName", item["packageName"] as? String ?: "")
+                    putString("appName", item["appName"] as? String ?: "")
+                    putInt("count", item["count"] as? Int ?: 0)
+                }
+                array.pushMap(itemMap)
+            }
+
+            val map = WritableNativeMap().apply {
+                putInt("totalCount", totalCount)
+                putArray("summary", array)
+            }
+            promise.resolve(map)
+        } catch (e: Exception) {
+            promise.reject("ERR_SESSION_DISTRACTIONS", e.message)
+        }
+    }
+
+    @ReactMethod
+    fun getTodayDistractionsCount(promise: Promise) {
+        try {
+            val db = FocusDatabaseHelper(reactApplicationContext)
+            val count = db.getTodayDistractionsCount()
+            promise.resolve(count)
+        } catch (e: Exception) {
+            promise.resolve(0)
         }
     }
 
@@ -295,6 +369,9 @@ class PermissionModule(reactContext: ReactApplicationContext)
                 map.putDouble("start_time", (s["start_time"] as Long).toDouble())
                 map.putDouble("end_time", (s["end_time"] as Long).toDouble())
                 map.putInt("duration_minutes", s["duration_minutes"] as Int)
+                map.putInt("actual_minutes", s["actual_minutes"] as? Int ?: s["duration_minutes"] as Int)
+                map.putInt("score", s["score"] as? Int ?: 100)
+                map.putInt("blocked_attempts", s["blocked_attempts"] as? Int ?: 0)
                 map.putBoolean("strict_mode", s["strict_mode"] as Boolean)
                 map.putString("status", s["status"] as String)
                 array.pushMap(map)
@@ -318,6 +395,7 @@ class PermissionModule(reactContext: ReactApplicationContext)
             for (info in resolveInfos) {
                 val pkg = info.activityInfo.packageName
                 if (pkg == ownPkg) continue
+                if (FocusSessionManager.isSystemOrLauncherPackage(reactApplicationContext, pkg)) continue
 
                 val appName = info.loadLabel(pm).toString()
                 val isSystem = (info.activityInfo.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0

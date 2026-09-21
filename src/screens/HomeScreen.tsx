@@ -10,11 +10,15 @@ import {
   NativeModules,
 } from 'react-native';
 import { colors, spacing, fonts } from '../theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   getCurrentUserProfile,
   getUserStats,
   getHistorySessions,
+  getTodayGoalProgress,
+  setDailyFocusGoal,
+  TodayGoalProgress,
   SessionRecord,
 } from '../services/database';
 import {
@@ -27,6 +31,8 @@ import {
   RightArrowIcon,
   SparklesIcon,
 } from '../utils/Icons';
+import { DailyGoalModal } from '../components/DailyGoalModal';
+import { ScoreBreakdownModal } from '../components/ScoreBreakdownModal';
 
 interface HomeScreenProps {
   onStartSession: (minutes?: number) => void;
@@ -35,23 +41,29 @@ interface HomeScreenProps {
   onOpenSettings?: () => void;
   onOpenActiveSession?: () => void;
   onOpenHistory?: () => void;
+  onOpenAchievements?: () => void;
   remainingTimeText?: string;
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
   onStartSession,
-  onNavigateToApps,
+  onNavigateToApps: _onNavigateToApps,
   isSessionActive,
-  onOpenSettings,
+  onOpenSettings: _onOpenSettings,
   onOpenActiveSession,
   onOpenHistory,
+  onOpenAchievements,
   remainingTimeText = '00:00:00',
 }) => {
+  const insets = useSafeAreaInsets();
   const [activeSessionTitle, setActiveSessionTitle] = useState<string>('Deep Focus Session');
   const [streakDays, setStreakDays] = useState<number>(0);
   const [todayFocusText, setTodayFocusText] = useState<string>('0h 0m');
   const [userName, setUserName] = useState<string>('User');
   const [recentSessions, setRecentSessions] = useState<SessionRecord[]>([]);
+  const [goalProgress, setGoalProgress] = useState<TodayGoalProgress | null>(null);
+  const [showGoalModal, setShowGoalModal] = useState<boolean>(false);
+  const [selectedScore, setSelectedScore] = useState<number | null>(null);
 
   const loadHomeData = async () => {
     try {
@@ -68,26 +80,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       const history = await getHistorySessions(uid, 'all');
       setRecentSessions(history.slice(0, 4)); // Top 4 recent sessions
 
-      // Calculate today's total focus minutes
-      const todayDate = new Date();
-      const todayYear = todayDate.getFullYear();
-      const todayMonth = String(todayDate.getMonth() + 1).padStart(2, '0');
-      const todayDay = String(todayDate.getDate()).padStart(2, '0');
-      const todayStr = `${todayYear}-${todayMonth}-${todayDay}`;
+      // Fetch accurate daily goal progress
+      const progress = await getTodayGoalProgress(uid);
+      setGoalProgress(progress);
 
-      const todayMins = history
-        .filter(s => {
-          if (s.status !== 'completed') return false;
-          const dateObj = new Date(s.created_at || Date.now());
-          const y = dateObj.getFullYear();
-          const m = String(dateObj.getMonth() + 1).padStart(2, '0');
-          const d = String(dateObj.getDate()).padStart(2, '0');
-          return `${y}-${m}-${d}` === todayStr;
-        })
-        .reduce((sum, s) => sum + (s.actual_minutes || s.planned_minutes || 0), 0);
-
-      const hrs = Math.floor(todayMins / 60);
-      const mins = todayMins % 60;
+      const hrs = Math.floor(progress.focusedMinutes / 60);
+      const mins = progress.focusedMinutes % 60;
       setTodayFocusText(`${hrs}h ${mins}m`);
     } catch (e) {
       console.warn('Error loading home screen dynamic data:', e);
@@ -106,7 +104,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               setActiveSessionTitle(session.title);
             }
           }
-        } catch (e) {}
+        } catch {}
       }
     };
 
@@ -114,15 +112,39 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     const interval = setInterval(() => {
       fetchSessionMeta();
       loadHomeData();
-    }, 3000);
+    }, 2500);
 
     return () => clearInterval(interval);
   }, []);
 
+  const handleSaveGoal = async (minutes: number) => {
+    await setDailyFocusGoal(minutes);
+    await loadHomeData();
+  };
+
+  const renderInsightText = () => {
+    if (!goalProgress || (goalProgress.focusedMinutes === 0 && recentSessions.length === 0)) {
+      return 'Your focus journey starts here 🌱 Complete your first session to build activity.';
+    }
+    if (goalProgress.isCompleted) {
+      return '🎯 Outstanding discipline! You reached your daily focus goal today. Excellent work!';
+    }
+    if (goalProgress.distractionsBlocked > 0) {
+      return `🛡️ Distraction shield active! You blocked ${goalProgress.distractionsBlocked} distraction attempt(s) today.`;
+    }
+    if (goalProgress.percent >= 50) {
+      return `You're ${goalProgress.percent}% toward your ${goalProgress.goalMinutes}m goal. More than halfway there!`;
+    }
+    return `Every session brings you closer to your goal. ${goalProgress.remainingMinutes}m remaining today.`;
+  };
+
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[
+        styles.content,
+        { paddingBottom: Math.max(140, insets.bottom + 120) },
+      ]}
       showsVerticalScrollIndicator={false}
     >
       {/* Top Header Bar */}
@@ -132,7 +154,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           style={styles.brandAppIcon}
         />
         <View style={styles.headerTextGroup}>
-          <Text style={styles.greetingTitle}>Welcome to FocusLock!</Text>
+          <Text style={styles.greetingTitle}>Welcome back, {userName} 👋</Text>
           <Text style={styles.greetingSubtitle}>
             Let's build some momentum today.
           </Text>
@@ -162,7 +184,67 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </View>
       )}
 
-      {/* KPI Cards Row (2 Columns) */}
+      {/* 1. DAILY FOCUS GOAL CARD */}
+      <View style={styles.goalCard}>
+        <View style={styles.goalHeaderRow}>
+          <View style={styles.goalHeaderLeft}>
+            <View style={styles.targetIconBadge}>
+              <TargetDartBullseye color={colors.secondary} width={18} height={18} />
+            </View>
+            <Text style={styles.goalCardLabel}>TODAY'S GOAL</Text>
+          </View>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            style={styles.adjustGoalBtn}
+            onPress={() => setShowGoalModal(true)}>
+            <Text style={styles.adjustGoalText}>Change Goal</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.goalMetricRow}>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+            <Text style={styles.goalCurrentText}>
+              {goalProgress?.focusedMinutes ?? 0}
+            </Text>
+            <Text style={styles.goalTargetText}>
+              {' '}/ {goalProgress?.goalMinutes ?? 60} min
+            </Text>
+          </View>
+          <View style={styles.goalPercentBadge}>
+            <Text style={styles.goalPercentText}>
+              {goalProgress?.percent ?? 0}%
+            </Text>
+          </View>
+        </View>
+
+        {/* High-contrast Progress Bar */}
+        <View style={styles.progressBarTrack}>
+          <View
+            style={[
+              styles.progressBarFill,
+              {
+                width: `${Math.min(100, Math.max(0, goalProgress?.percent ?? 0))}%`,
+                backgroundColor: goalProgress?.isCompleted ? '#10B981' : '#8B5CF6',
+              },
+            ]}
+          />
+        </View>
+
+        {/* Goal Status Footer */}
+        <View style={styles.goalFooterRow}>
+          {goalProgress?.isCompleted ? (
+            <Text style={styles.goalSuccessStatus}>
+              🎯 Daily Goal Complete • Excellent work!
+            </Text>
+          ) : (
+            <Text style={styles.goalRemainingStatus}>
+              {goalProgress?.remainingMinutes ?? 60} min remaining today
+            </Text>
+          )}
+        </View>
+      </View>
+
+      {/* KPI Cards Row (Today's Focus & Current Streak) */}
       <View style={styles.kpiRow}>
         {/* Today's Focus Card */}
         <View style={styles.kpiCard}>
@@ -184,7 +266,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </View>
 
         {/* Current Streak Card */}
-        <View style={styles.kpiCard}>
+        <TouchableOpacity
+          activeOpacity={0.82}
+          onPress={onOpenAchievements}
+          style={styles.kpiCard}>
           <View style={styles.kpiHeaderRow}>
             <View style={styles.orangeIconCircle}>
               <FlameIcon color={colors.tertiary} width={16} height={16} />
@@ -194,11 +279,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <Text style={styles.kpiValue}>
             {streakDays} {streakDays === 1 ? 'Day' : 'Days'}
           </Text>
-          <Text style={styles.kpiSubtext}>Start your streak</Text>
+          <View style={styles.kpiStreakFooter}>
+            <Text style={styles.kpiSubtext}>
+              {streakDays > 0 ? 'Momentum active 🔥' : 'Start your streak'}
+            </Text>
+            <Text style={styles.kpiBadgeLink}>Badges ›</Text>
+          </View>
           <View style={styles.cardWaveWrap}>
             <CardWaveOrange />
           </View>
-        </View>
+        </TouchableOpacity>
       </View>
 
       {/* Large CTA Purple Start Session Card Button */}
@@ -228,7 +318,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <Text style={styles.ctaCardSub}>
             {isSessionActive
               ? `Remaining: ${remainingTimeText}`
-              : 'Stay focused. Achieve more.'}
+              : 'Block distractions and achieve more.'}
           </Text>
         </View>
 
@@ -241,56 +331,73 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </View>
       </TouchableOpacity>
 
-      {/* Welcome Onboarding Card (Only shown on first install when user has 0 sessions) */}
-      {recentSessions.length === 0 && (
-        <View style={styles.welcomeHelpsCard}>
-          {/* Header Row */}
-          <View style={styles.welcomeHeaderRow}>
-            <SparklesIcon color="#A855F7" width={18} height={18} />
-            <Text style={styles.welcomeHelpsTitle}>FocusLock helps you</Text>
-          </View>
+      {/* Quick Start Presets Row */}
+      <View style={styles.quickStartSection}>
+        <Text style={styles.quickStartLabel}>QUICK START</Text>
+        <View style={styles.quickStartRow}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={styles.quickStartPill}
+            onPress={() => onStartSession(25)}>
+            <Text style={styles.quickStartDuration}>25 min</Text>
+            <Text style={styles.quickStartDesc}>Pomodoro</Text>
+          </TouchableOpacity>
 
-          {/* 3 Features Grid Row */}
-          <View style={styles.welcomeFeaturesRow}>
-            {/* Feature 1 */}
-            <View style={styles.welcomeFeatureCol}>
-              <View style={[styles.welcomeIconBadge, styles.purpleShieldBadge]}>
-                <Text style={{ fontSize: 20 }}>🛡️</Text>
-              </View>
-              <Text style={styles.welcomeFeatureTitle}>Block{'\n'}Distractions</Text>
-            </View>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={styles.quickStartPill}
+            onPress={() => onStartSession(50)}>
+            <Text style={styles.quickStartDuration}>50 min</Text>
+            <Text style={styles.quickStartDesc}>Study</Text>
+          </TouchableOpacity>
 
-            <View style={styles.welcomeFeatureDivider} />
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={styles.quickStartPill}
+            onPress={() => onStartSession(90)}>
+            <Text style={styles.quickStartDuration}>90 min</Text>
+            <Text style={styles.quickStartDesc}>Deep Work</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
 
-            {/* Feature 2 */}
-            <View style={styles.welcomeFeatureCol}>
-              <View style={[styles.welcomeIconBadge, styles.greenTargetBadge]}>
-                <Text style={{ fontSize: 20 }}>🎯</Text>
-              </View>
-              <Text style={styles.welcomeFeatureTitle}>Stay Focused{'\n'}Longer</Text>
-            </View>
-
-            <View style={styles.welcomeFeatureDivider} />
-
-            {/* Feature 3 */}
-            <View style={styles.welcomeFeatureCol}>
-              <View style={[styles.welcomeIconBadge, styles.goldChartBadge]}>
-                <Text style={{ fontSize: 20 }}>📊</Text>
-              </View>
-              <Text style={styles.welcomeFeatureTitle}>Achieve Your{'\n'}Goals</Text>
-            </View>
-          </View>
-
-          {/* Bottom Quote Banner */}
-          <View style={styles.welcomeQuoteRow}>
-            <Text style={styles.quoteMarkText}>“</Text>
-            <Text style={styles.welcomeQuoteText}>
-              Small steps every day lead to big results.
+      {/* Today's Progress Summary */}
+      <View style={styles.progressSummaryCard}>
+        <Text style={styles.progressSummaryTitle}>Today's Progress</Text>
+        <View style={styles.progressSummaryRow}>
+          <View style={styles.progressSummaryItem}>
+            <Text style={styles.progressSummaryIcon}>✓</Text>
+            <Text style={styles.progressSummaryText}>
+              {goalProgress?.focusedMinutes ?? 0}m focused
             </Text>
-            <Text style={styles.quoteMarkText}>”</Text>
+          </View>
+          <View style={styles.progressSummaryItem}>
+            <Text style={styles.progressSummaryIcon}>🛡️</Text>
+            <Text style={styles.progressSummaryText}>
+              {goalProgress?.distractionsBlocked ?? 0} blocked
+            </Text>
+          </View>
+          <View style={styles.progressSummaryItem}>
+            <Text style={styles.progressSummaryIcon}>
+              {goalProgress?.isCompleted ? '🎯' : '○'}
+            </Text>
+            <Text style={styles.progressSummaryText}>
+              {goalProgress?.isCompleted
+                ? 'Goal complete'
+                : `${goalProgress?.remainingMinutes ?? 60}m remaining`}
+            </Text>
           </View>
         </View>
-      )}
+      </View>
+
+      {/* Dynamic Insight Card */}
+      <View style={styles.insightCard}>
+        <View style={styles.insightHeaderRow}>
+          <SparklesIcon color="#A855F7" width={16} height={16} />
+          <Text style={styles.insightTitle}>Today's Insight</Text>
+        </View>
+        <Text style={styles.insightBodyText}>{renderInsightText()}</Text>
+      </View>
 
       {/* Recent Sessions Section */}
       <View style={styles.sectionHeader}>
@@ -350,27 +457,49 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                   {session.start_time
                     ? `${session.start_time} - ${session.end_time || ''}`
                     : 'Today'}
+                  {session.blocked_attempts > 0 && ` • ${session.blocked_attempts} blocked`}
                 </Text>
               </View>
               <View style={{ alignItems: 'flex-end' }}>
                 <Text style={styles.sessionDuration}>
                   {session.actual_minutes || session.planned_minutes || 0}m
                 </Text>
-                <Text
-                  style={[
-                    styles.sessionPts,
-                    session.status === 'completed'
-                      ? { color: colors.secondary }
-                      : { color: '#F59E0B' },
-                  ]}
-                >
-                  {session.status === 'completed' ? '✓ Completed' : '⏱ Early Ended'}
-                </Text>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => setSelectedScore(session.score)}>
+                  <Text
+                    style={[
+                      styles.sessionPts,
+                      session.status === 'completed'
+                        ? { color: colors.secondary }
+                        : { color: '#F59E0B' },
+                    ]}
+                  >
+                    {session.status === 'completed'
+                      ? `✓ ${session.score} PTS`
+                      : `⏱ ${session.score} PTS`}
+                  </Text>
+                </TouchableOpacity>
               </View>
             </View>
           </View>
         ))
       )}
+
+      {/* Daily Goal Configuration Modal */}
+      <DailyGoalModal
+        visible={showGoalModal}
+        currentGoalMinutes={goalProgress?.goalMinutes ?? 60}
+        onSaveGoal={handleSaveGoal}
+        onClose={() => setShowGoalModal(false)}
+      />
+
+      {/* Score Explanation Modal */}
+      <ScoreBreakdownModal
+        visible={selectedScore !== null}
+        score={selectedScore ?? 100}
+        onClose={() => setSelectedScore(null)}
+      />
     </ScrollView>
   );
 };
@@ -525,6 +654,19 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: 12,
     zIndex: 2,
+  },
+  kpiStreakFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 2,
+    zIndex: 2,
+  },
+  kpiBadgeLink: {
+    fontFamily: fonts.bold,
+    fontSize: 11,
+    color: colors.tertiary,
+    fontWeight: '700',
   },
   cardWaveWrap: {
     position: 'absolute',
@@ -799,6 +941,212 @@ const styles = StyleSheet.create({
     fontFamily: fonts.semiBold,
     fontSize: 13,
     marginTop: 2,
+  },
+  /* Goal Dashboard Styles */
+  goalCard: {
+    backgroundColor: '#161B22',
+    borderRadius: 22,
+    padding: 18,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 0.25)',
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  goalHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  goalHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  targetIconBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  goalCardLabel: {
+    fontFamily: fonts.bold,
+    color: '#E6EDF3',
+    fontSize: 13,
+    letterSpacing: 0.8,
+  },
+  adjustGoalBtn: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  adjustGoalText: {
+    fontFamily: fonts.semiBold,
+    color: '#A78BFA',
+    fontSize: 12,
+  },
+  goalMetricRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  goalCurrentText: {
+    fontFamily: fonts.bold,
+    fontSize: 32,
+    color: '#FFFFFF',
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  goalTargetText: {
+    fontFamily: fonts.semiBold,
+    fontSize: 18,
+    color: '#8B949E',
+  },
+  goalPercentBadge: {
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+  },
+  goalPercentText: {
+    fontFamily: fonts.bold,
+    fontSize: 14,
+    color: '#10B981',
+    fontWeight: '700',
+  },
+  progressBarTrack: {
+    height: 10,
+    backgroundColor: '#0E1420',
+    borderRadius: 5,
+    overflow: 'hidden',
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 5,
+  },
+  goalFooterRow: {
+    marginTop: 2,
+  },
+  goalSuccessStatus: {
+    fontFamily: fonts.semiBold,
+    color: '#10B981',
+    fontSize: 13,
+  },
+  goalRemainingStatus: {
+    fontFamily: fonts.regular,
+    color: '#8B949E',
+    fontSize: 13,
+  },
+  /* Quick Start Styles */
+  quickStartSection: {
+    marginBottom: 20,
+  },
+  quickStartLabel: {
+    fontFamily: fonts.bold,
+    color: '#8B949E',
+    fontSize: 12,
+    letterSpacing: 0.8,
+    marginBottom: 10,
+  },
+  quickStartRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  quickStartPill: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  quickStartDuration: {
+    fontFamily: fonts.bold,
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  quickStartDesc: {
+    fontFamily: fonts.regular,
+    color: '#8B949E',
+    fontSize: 11,
+  },
+  /* Progress Summary Card */
+  progressSummaryCard: {
+    backgroundColor: '#121720',
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  progressSummaryTitle: {
+    fontFamily: fonts.bold,
+    color: '#E6EDF3',
+    fontSize: 14,
+    marginBottom: 12,
+  },
+  progressSummaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  progressSummaryItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  progressSummaryIcon: {
+    fontSize: 14,
+    color: '#10B981',
+  },
+  progressSummaryText: {
+    fontFamily: fonts.medium,
+    color: '#8B949E',
+    fontSize: 12.5,
+  },
+  /* Dynamic Insight Card */
+  insightCard: {
+    backgroundColor: '#151325',
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(168, 85, 247, 0.25)',
+  },
+  insightHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  insightTitle: {
+    fontFamily: fonts.bold,
+    color: '#C084FC',
+    fontSize: 13,
+    letterSpacing: 0.5,
+  },
+  insightBodyText: {
+    fontFamily: fonts.regular,
+    color: '#E2E8F0',
+    fontSize: 13,
+    lineHeight: 18,
   },
 });
 

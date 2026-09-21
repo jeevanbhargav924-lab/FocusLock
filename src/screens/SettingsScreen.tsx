@@ -13,6 +13,7 @@ import {
   Modal,
 } from 'react-native';
 import { spacing, fonts, colors } from '../theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PasscodeModal } from '../components/PasscodeModal';
 import { PrivacyPolicyScreen } from './PrivacyPolicyScreen';
 import { TermsOfUseScreen } from './TermsOfUseScreen';
@@ -20,7 +21,18 @@ import { HelpSupportScreen } from './HelpSupportScreen';
 import { AboutAppScreen } from './AboutAppScreen';
 
 import { Toast } from '../components/Toast';
-import { AboutIcon, EmergencyLimitIcon, EmergencyPinIcon, HelpAndSupportIcon, PrivacyPolicyIcon, SettingsIcon, TermAndConditionIcon } from '../utils/Icons';
+import {
+  AboutIcon,
+  EmergencyLimitIcon,
+  EmergencyPinIcon,
+  HelpAndSupportIcon,
+  PrivacyPolicyIcon,
+  SettingsIcon,
+  TermAndConditionIcon,
+  TargetDartBullseye,
+} from '../utils/Icons';
+import { getDailyFocusGoal, setDailyFocusGoal } from '../services/database';
+import { DailyGoalModal } from '../components/DailyGoalModal';
 
 interface SettingsScreenProps {
   onBack?: () => void;
@@ -29,9 +41,12 @@ interface SettingsScreenProps {
 export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   onBack,
 }) => {
+  const insets = useSafeAreaInsets();
   // const [darkMode, setDarkMode] = useState<boolean>(true);
   // const [biometricUnlock, setBiometricUnlock] = useState<boolean>(true);
   const [selectedLanguage, setSelectedLanguage] = useState<string>('English');
+  const [dailyGoalMinutes, setDailyGoalMinutes] = useState<number>(60);
+  const [showDailyGoalModal, setShowDailyGoalModal] = useState<boolean>(false);
   const [dailyLimit, setDailyLimit] = useState<number>(5);
   const [dailyRemaining, setDailyRemaining] = useState<number>(5);
   const [isLimitLocked, setIsLimitLocked] = useState<boolean>(false);
@@ -43,6 +58,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   const [passcodeMode, setPasscodeMode] = useState<'setup' | 'verify'>('verify');
 
   useEffect(() => {
+    getDailyFocusGoal().then(setDailyGoalMinutes).catch(() => {});
+
     if (Platform.OS === 'android' && NativeModules.PermissionModule) {
       if (NativeModules.PermissionModule.getMaxDailyChanges) {
         NativeModules.PermissionModule.getMaxDailyChanges()
@@ -67,6 +84,12 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
       }
     }
   }, []);
+
+  const handleSaveDailyGoal = async (minutes: number) => {
+    setDailyGoalMinutes(minutes);
+    await setDailyFocusGoal(minutes);
+    Toast.success('Goal Updated 🎯', `Daily focus goal set to ${minutes} minutes.`);
+  };
 
   const handleChangeDailyLimit = () => {
     if (isLimitLocked) {
@@ -169,7 +192,13 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={[
+        styles.content,
+        { paddingBottom: Math.max(140, insets.bottom + 120) },
+      ]}
+      showsVerticalScrollIndicator={false}>
       {/* Top Header Bar with App Logo */}
       <View style={styles.topBar}>
         <View style={styles.headerLeftGroup}>
@@ -182,6 +211,32 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
             <Text style={styles.brandSubtitle}>Manage your app preferences and security.</Text>
           </View>
         </View>
+      </View>
+
+      {/* DAILY GOAL & HABITS SECTION */}
+      <Text style={styles.sectionHeaderLabel}>DAILY GOAL & HABITS</Text>
+      <View style={styles.groupCard}>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          style={styles.settingRow}
+          onPress={() => setShowDailyGoalModal(true)}
+        >
+          <View style={styles.settingLeft}>
+            <View style={[styles.settingIconBadge, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+              <TargetDartBullseye color="#10B981" width={20} height={20} />
+            </View>
+            <View>
+              <Text style={styles.settingLabel}>Daily Focus Goal</Text>
+              <Text style={styles.lockedValText}>
+                {dailyGoalMinutes >= 60
+                  ? `${Math.floor(dailyGoalMinutes / 60)}h ${dailyGoalMinutes % 60 > 0 ? `${dailyGoalMinutes % 60}m` : ''} / Day`
+                  : `${dailyGoalMinutes} min / Day`}
+              </Text>
+              <Text style={styles.subtextLabel}>Tap to adjust target duration</Text>
+            </View>
+          </View>
+          <Text style={styles.chevron}>›</Text>
+        </TouchableOpacity>
       </View>
 
       {/* SECURITY & PROTECTION SECTION */}
@@ -308,6 +363,14 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           <Text style={styles.chevron}>›</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Daily Focus Goal Modal */}
+      <DailyGoalModal
+        visible={showDailyGoalModal}
+        currentGoalMinutes={dailyGoalMinutes}
+        onSaveGoal={handleSaveDailyGoal}
+        onClose={() => setShowDailyGoalModal(false)}
+      />
 
       {/* Passcode Authorization Modal */}
       <PasscodeModal

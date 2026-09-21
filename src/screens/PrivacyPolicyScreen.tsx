@@ -141,7 +141,7 @@ export const PrivacyPolicyScreen: React.FC<PrivacyPolicyScreenProps> = ({ onBack
             FocusLock operates on a privacy-first model: 100% of your focus session history, custom app blocking lists, and app statistics are stored locally on your device in a secure local database.
           </Text>
           <Text style={styles.paragraph}>
-            Because FocusLock does not collect or transmit user data to external servers, you have full control over your data. You can permanently delete all app data, statistics, and settings at any time by clearing the application storage in Android Settings (`Settings > Apps > Focus Lock > Storage > Clear Data`) or by uninstalling the application.
+            Because FocusLock does not collect or transmit user data to external servers, you have full control over your data. You can permanently delete all app data, statistics, and settings at any time by clearing the application storage in Android Settings (Settings → Apps → Focus Lock → Storage → Clear Data) or by uninstalling the application.
           </Text>
 
           {/* Section 7 */}

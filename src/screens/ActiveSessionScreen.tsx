@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, NativeModules, Platform } from 'react-native';
-import { colors, typography, spacing } from '../theme';
+import { colors, typography, spacing, fonts } from '../theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FocusTimerDisplay } from '../components/FocusTimerDisplay';
 import { FocusButton } from '../components/FocusButton';
 import { FocusCard } from '../components/FocusCard';
@@ -16,14 +17,16 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
   initialMinutes = 25,
   onEndSession,
   onNaturalCompletion,
-  onTriggerBlockedAlert,
+  onTriggerBlockedAlert: _onTriggerBlockedAlert,
 }) => {
+  const insets = useSafeAreaInsets();
   const [sessionTitle, setSessionTitle] = useState<string>('Deep Focus Session');
   const [remainingSeconds, setRemainingSeconds] = useState<number>(initialMinutes * 60);
   const [totalSeconds, setTotalSeconds] = useState<number>(initialMinutes * 60);
   const [isStrict, setIsStrict] = useState<boolean>(true);
-  const [isRunning, setIsRunning] = useState<boolean>(true);
+  const [isRunning] = useState<boolean>(true);
   const [blockedCount, setBlockedCount] = useState<number>(0);
+  const [topApp, setTopApp] = useState<string>('');
 
   useEffect(() => {
     const fetchNativeSession = async () => {
@@ -33,6 +36,12 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
           if (session) {
             setSessionTitle(session.title || 'Deep Focus Session');
             setIsStrict(session.strictMode ?? true);
+            if (typeof session.blockedAttempts === 'number') {
+              setBlockedCount(session.blockedAttempts);
+            }
+            if (session.topAttemptedApp) {
+              setTopApp(session.topAttemptedApp);
+            }
             const duration = (session.durationMinutes || initialMinutes) * 60;
             setTotalSeconds(duration);
 
@@ -56,22 +65,19 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
     return () => clearInterval(interval);
   }, [initialMinutes, onNaturalCompletion]);
 
-  const togglePause = () => {
-    setIsRunning(prev => !prev);
-  };
-
-  const handleTestBlock = () => {
-    setBlockedCount(prev => prev + 1);
-    onTriggerBlockedAlert();
-  };
-
   const handleManualEndTap = () => {
     const elapsedSec = Math.max(0, totalSeconds - remainingSeconds);
     onEndSession(elapsedSec, remainingSeconds, blockedCount);
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={[
+        styles.content,
+        { paddingBottom: Math.max(130, insets.bottom + 100) },
+      ]}
+      showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
         <View style={styles.badgeRow}>
           <Text style={styles.liveBadge}>● LIVE SESSION</Text>
@@ -87,9 +93,16 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
         isActive={isRunning}
       />
 
+      {/* Subtle Distraction Indicator */}
+      <View style={styles.distractionPill}>
+        <Text style={styles.distractionPillText}>
+          🛡️ {blockedCount} {blockedCount === 1 ? 'distraction' : 'distractions'} blocked
+          {topApp ? ` (${topApp})` : ''}
+        </Text>
+      </View>
+
       {/* Action Controls */}
       <View style={styles.controlsRow}>
-        
         <FocusButton
           title="End Session"
           variant="danger"
@@ -97,23 +110,6 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
           style={styles.controlBtn}
         />
       </View>
-
-      {/* Session Metrics Card */}
-      <FocusCard style={styles.metricsCard}>
-        <View style={styles.metricItem}>
-          <Text style={[typography.labelCaps, { color: colors.textMuted }]}>BLOCKED ATTEMPTS</Text>
-          <Text style={[typography.headlineMedium, { color: colors.tertiary, marginTop: 4 }]}>
-            {blockedCount} Distractions
-          </Text>
-        </View>
-        <FocusButton
-          title="Simulate Distraction Block"
-          variant="outline"
-          size="small"
-          onPress={handleTestBlock}
-          style={{ marginTop: spacing.sm }}
-        />
-      </FocusCard>
 
       {/* Motivational Quote */}
       <FocusCard style={styles.quoteCard} variant="high">
@@ -190,5 +186,21 @@ const styles = StyleSheet.create({
     width: '100%',
     marginTop: spacing.sm,
     alignItems: 'center',
+  },
+  distractionPill: {
+    marginTop: spacing.md,
+    marginBottom: spacing.xs,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#161B22',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  distractionPillText: {
+    color: '#8B949E',
+    fontSize: 13,
+    fontWeight: '600',
+    fontFamily: fonts.medium,
   },
 });

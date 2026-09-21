@@ -23,6 +23,7 @@ import {
   CalendarIcon,
 } from '../utils/Icons';
 import { colors, fonts, spacing } from '../theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface FocusHistoryScreenProps {
   userId?: string;
@@ -35,6 +36,7 @@ export const FocusHistoryScreen: React.FC<FocusHistoryScreenProps> = ({
   onOpenSettings,
   onNavigateToStats,
 }) => {
+  const insets = useSafeAreaInsets();
   const [filter, setFilter] = useState<'all' | 'completed' | 'interrupted'>('all');
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -73,7 +75,10 @@ export const FocusHistoryScreen: React.FC<FocusHistoryScreenProps> = ({
     <SafeAreaView style={styles.safeContainer}>
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.contentContainer}
+        contentContainerStyle={[
+          styles.contentContainer,
+          { paddingBottom: Math.max(140, insets.bottom + 120) },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.topBar}>

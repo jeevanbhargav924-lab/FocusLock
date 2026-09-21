@@ -10,6 +10,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { spacing, radius, fonts, colors } from '../theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PasscodeModal } from '../components/PasscodeModal';
 import { BackIcon, SettingsIcon } from '../utils/Icons';
 
@@ -30,6 +31,7 @@ export const CreateSessionScreen: React.FC<CreateSessionScreenProps> = ({
   onNavigateToAllowedApps,
   allowedAppsCount = 3,
 }) => {
+  const insets = useSafeAreaInsets();
   const [durationMinutes, setDurationMinutes] = useState<number>(60);
   const [sessionName, setSessionName] = useState<string>('');
   const [selectedTag, setSelectedTag] = useState<string>('Study');
@@ -78,7 +80,11 @@ export const CreateSessionScreen: React.FC<CreateSessionScreenProps> = ({
     <SafeAreaView style={styles.fullScreenContainer}>
       <ScrollView
         style={styles.container}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: Math.max(140, insets.bottom + 120) },
+        ]}
+        showsVerticalScrollIndicator={false}
       >
         {/* Top Header Bar */}
         <View style={styles.topBar}>

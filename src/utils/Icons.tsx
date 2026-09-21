@@ -751,3 +751,15 @@ export const CompassTargetIcon = (props: any) => (
     <Path d="M12 1v3M12 20v3M1 12h3M20 12h3" stroke={props.color || '#10B981'} strokeWidth={2} strokeLinecap="round" />
   </Svg>
 );
+
+export const ShareIcon = (props: any) => (
+  <Svg width={props.width || 20} height={props.height || 20} viewBox="0 0 24 24" fill="none" {...props}>
+    <Path
+      d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"
+      stroke={props.color || '#FFFFFF'}
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);

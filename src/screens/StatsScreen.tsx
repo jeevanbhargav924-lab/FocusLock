@@ -26,10 +26,12 @@ import {
   StatisticsIcon,
 } from '../utils/Icons';
 import { colors, fonts, spacing } from '../theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface StatsScreenProps {
   userId?: string;
   onOpenSettings?: () => void;
+  onOpenAchievements?: () => void;
 }
 
 interface HeatmapCell {
@@ -42,8 +44,10 @@ interface HeatmapCell {
 
 export const StatsScreen: React.FC<StatsScreenProps> = ({
   userId = 'default_user',
-  onOpenSettings,
+  onOpenSettings: _onOpenSettings,
+  onOpenAchievements,
 }) => {
+  const insets = useSafeAreaInsets();
   const [stats, setStats] = useState<UserStatsRecord | null>(null);
   const [historySessions, setHistorySessions] = useState<SessionRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -290,7 +294,10 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({
     <SafeAreaView style={styles.safeContainer}>
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.contentContainer}
+        contentContainerStyle={[
+          styles.contentContainer,
+          { paddingBottom: Math.max(140, insets.bottom + 120) },
+        ]}
         showsVerticalScrollIndicator={false}>
         {/* Top Header Bar with App Logo */}
         <View style={styles.topBar}>
@@ -316,7 +323,10 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({
         ) : (
           <>
             {/* Card 1: CURRENT STREAK Golden Card */}
-            <View style={styles.goldenStreakCard}>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={onOpenAchievements}
+              style={styles.goldenStreakCard}>
               <View style={styles.streakLeftGroup}>
                 <View style={styles.outerFlameRing}>
                   <View style={styles.innerFlameCircle}>
@@ -326,7 +336,10 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({
               </View>
 
               <View style={styles.streakRightText}>
-                <Text style={styles.streakCardLabel}>CURRENT STREAK</Text>
+                <View style={styles.streakHeaderLine}>
+                  <Text style={styles.streakCardLabel}>CURRENT STREAK</Text>
+                  <Text style={styles.streakBadgesLink}>View Badges ›</Text>
+                </View>
                 <Text style={styles.streakCardValue}>
                   {stats?.current_streak ?? 0} {stats?.current_streak === 1 ? 'Day' : 'Days'}
                 </Text>
@@ -340,7 +353,7 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({
               <View style={styles.streakGraphicWrap}>
                 <StreakWaveChartGraphic />
               </View>
-            </View>
+            </TouchableOpacity>
 
             {/* Card 2: Focus Activity Card */}
             <View style={styles.sectionCard}>
@@ -403,7 +416,28 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({
               </View>
             </View>
 
-            {/* Card 4: Consistency Motivation Card */}
+            {/* Card 4: Badges & Level Progression Banner Card */}
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={onOpenAchievements}
+              style={styles.achievementsHubCard}>
+              <View style={styles.achievementsHubLeft}>
+                <View style={styles.trophyIconRing}>
+                  <TrophyIcon color="#F59E0B" width={22} height={22} />
+                </View>
+                <View style={styles.achievementsHubText}>
+                  <Text style={styles.achievementsHubTitle}>Badges & Levels</Text>
+                  <Text style={styles.achievementsHubSub}>
+                    {stats?.unlocked_badges_count ?? 0} of 9 Badges Unlocked • View XP Tier
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.achievementsPill}>
+                <Text style={styles.achievementsPillText}>Open Hub ›</Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* Card 5: Consistency Motivation Card */}
             <View style={styles.motivationCard}>
               <View style={styles.motivationLeft}>
                 <View style={styles.sparkleTitleRow}>
@@ -802,5 +836,74 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: fonts.regular,
     color: '#94A3B8',
+  },
+  streakHeaderLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingRight: 6,
+  },
+  streakBadgesLink: {
+    fontSize: 11,
+    fontFamily: fonts.bold,
+    color: '#F59E0B',
+    fontWeight: '700',
+  },
+  achievementsHubCard: {
+    backgroundColor: '#171426',
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(168, 85, 247, 0.35)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  achievementsHubLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 12,
+  },
+  trophyIconRing: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+  },
+  achievementsHubText: {
+    flex: 1,
+  },
+  achievementsHubTitle: {
+    fontFamily: fonts.bold,
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  achievementsHubSub: {
+    fontFamily: fonts.medium,
+    color: '#C084FC',
+    fontSize: 12,
+  },
+  achievementsPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 12,
+    backgroundColor: 'rgba(168, 85, 247, 0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(168, 85, 247, 0.45)',
+  },
+  achievementsPillText: {
+    fontFamily: fonts.bold,
+    color: '#E9D5FF',
+    fontSize: 12,
+    fontWeight: '700',
   },
 });
