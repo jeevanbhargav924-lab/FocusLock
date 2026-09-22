@@ -3,10 +3,10 @@ import { Linking } from 'react-native';
 /**
  * FocusLock App Version Constants
  * Keep in sync with android/app/build.gradle defaultConfig:
- * versionCode: 4, versionName: "1.0.3"
+ * versionCode: 6, versionName: "1.0.5"
  */
-export const CURRENT_VERSION_CODE = 4;
-export const CURRENT_VERSION_NAME = '1.0.3';
+export const CURRENT_VERSION_CODE = 6;
+export const CURRENT_VERSION_NAME = '1.0.5';
 
 // Remote URL where version.json is hosted (GitHub raw URL for main branch)
 export const DEFAULT_VERSION_CONFIG_URL =
