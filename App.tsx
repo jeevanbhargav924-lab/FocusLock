@@ -17,6 +17,8 @@ import { AllowedAppsScreen } from './src/screens/AllowedAppsScreen';
 import { BlockedOverlayScreen } from './src/screens/BlockedOverlayScreen';
 import { PasscodeModal } from './src/components/PasscodeModal';
 import { EndSessionCountdownModal } from './src/components/EndSessionCountdownModal';
+import { UpdateModal } from './src/components/UpdateModal';
+import { checkForAppUpdate, UpdateInfo } from './src/services/updateChecker';
 
 import { FocusHistoryScreen } from './src/screens/FocusHistoryScreen';
 import { StatsScreen } from './src/screens/StatsScreen';
@@ -56,6 +58,8 @@ function MainAppController(): React.JSX.Element {
   const showSessionCompletedRef = useRef(false);
   const showBlockedOverlayRef = useRef(false);
   const showAchievementsModalRef = useRef(false);
+  const showUpdateModalRef = useRef(false);
+  const updateInfoRef = useRef<UpdateInfo | null>(null);
 
   // Session & Protection States
   const [isSessionActive, setIsSessionActive] = useState<boolean>(false);
@@ -73,6 +77,8 @@ function MainAppController(): React.JSX.Element {
   const [showAllowedApps, setShowAllowedApps] = useState<boolean>(false);
   const [showBlockedOverlay, setShowBlockedOverlay] = useState<boolean>(false);
   const [showAchievementsModal, setShowAchievementsModal] = useState<boolean>(false);
+  const [showUpdateModal, setShowUpdateModal] = useState<boolean>(false);
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [pendingTarget, setPendingTarget] = useState<'createSession' | 'allowedApps' | null>(null);
 
   // Security Passcode Modal State
@@ -123,6 +129,8 @@ function MainAppController(): React.JSX.Element {
   useEffect(() => { showSessionCompletedRef.current = showSessionCompleted; }, [showSessionCompleted]);
   useEffect(() => { showBlockedOverlayRef.current = showBlockedOverlay; }, [showBlockedOverlay]);
   useEffect(() => { showAchievementsModalRef.current = showAchievementsModal; }, [showAchievementsModal]);
+  useEffect(() => { showUpdateModalRef.current = showUpdateModal; }, [showUpdateModal]);
+  useEffect(() => { updateInfoRef.current = updateInfo; }, [updateInfo]);
 
   // Navigate to tab and update history stack
   const navigateToTab = useCallback((targetTab: TabKey) => {
@@ -150,6 +158,12 @@ function MainAppController(): React.JSX.Element {
 
   // Back action: modals -> previous tabs -> exit on home
   const handleGoBack = useCallback(() => {
+    if (showUpdateModalRef.current) {
+      if (!updateInfoRef.current?.isForced) {
+        setShowUpdateModal(false);
+      }
+      return true;
+    }
     if (showReflectionCountdownRef.current) {
       setShowReflectionCountdown(false);
       return true;
@@ -236,6 +250,14 @@ function MainAppController(): React.JSX.Element {
     };
 
     checkInitialState();
+
+    // Check for remote app updates asynchronously
+    checkForAppUpdate().then(info => {
+      if (info && info.hasUpdate) {
+        setUpdateInfo(info);
+        setShowUpdateModal(true);
+      }
+    });
   }, []);
 
   // Sync active native session on launch & periodic timer update
@@ -823,6 +845,13 @@ function MainAppController(): React.JSX.Element {
         onConfirmEnd={handleConfirmEndSession}
         onCountdownComplete={handleConfirmEndSession}
         onCancel={() => setShowReflectionCountdown(false)}
+      />
+
+      {/* App Update Modal */}
+      <UpdateModal
+        visible={showUpdateModal}
+        updateInfo={updateInfo}
+        onDismiss={() => setShowUpdateModal(false)}
       />
     </ScreenLayout>
   );
