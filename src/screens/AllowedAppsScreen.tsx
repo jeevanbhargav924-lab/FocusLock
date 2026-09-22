@@ -24,6 +24,7 @@ export interface AppItem {
 }
 
 interface AllowedAppsScreenProps {
+  initialAllowedPkgs?: string[];
   onBack?: () => void;
   onClose?: () => void;
   onSaveAllowedApps?: (
@@ -39,6 +40,7 @@ interface AllowedAppsScreenProps {
 }
 
 export const AllowedAppsScreen: React.FC<AllowedAppsScreenProps> = ({
+  initialAllowedPkgs,
   onBack,
   onClose,
   onSaveAllowedApps,
@@ -81,13 +83,21 @@ export const AllowedAppsScreen: React.FC<AllowedAppsScreenProps> = ({
         const rawApps: any[] =
           await NativeModules.PermissionModule.getInstalledApps();
         if (Array.isArray(rawApps) && rawApps.length > 0) {
-          const parsedApps: AppItem[] = rawApps.map((a, idx) => ({
-            id: a.packageName || String(idx),
-            name: a.appName || a.name || a.packageName || 'App',
-            packageName: a.packageName,
-            iconText: getIconForAppName(a.appName || a.name || ''),
-            isAllowed: Boolean(a.isAllowed),
-          }));
+          const parsedApps: AppItem[] = rawApps.map((a, idx) => {
+            const pkg = a.packageName;
+            const isAllowed =
+              initialAllowedPkgs && initialAllowedPkgs.length > 0
+                ? Boolean(pkg && initialAllowedPkgs.includes(pkg))
+                : Boolean(a.isAllowed);
+
+            return {
+              id: pkg || String(idx),
+              name: a.appName || a.name || pkg || 'App',
+              packageName: pkg,
+              iconText: getIconForAppName(a.appName || a.name || ''),
+              isAllowed,
+            };
+          });
           setApps(parsedApps);
         }
       } catch (e) {
@@ -240,24 +250,36 @@ export const AllowedAppsScreen: React.FC<AllowedAppsScreenProps> = ({
                 </Text>
               </View>
 
-              {allowedApps.map(app => (
-                <View key={app.id} style={styles.appRow}>
-                  <View style={styles.appIconBadgeAllowed}>
-                    <Text style={styles.appIconText}>{app.iconText}</Text>
-                  </View>
+              {allowedApps.length === 0 ? (
+                <View style={styles.emptyAllowedCard}>
+                  <Text style={styles.emptyAllowedIcon}>🔒</Text>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.appName}>{app.name}</Text>
-                    <Text style={styles.appSubText}>Accessible in session</Text>
+                    <Text style={styles.emptyAllowedTitle}>No apps allowed</Text>
+                    <Text style={styles.emptyAllowedText}>
+                      All apps will be blocked during your focus session. Tap "+ Allow" below to whitelist an app.
+                    </Text>
                   </View>
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    onPress={() => toggleApp(app.id)}
-                    style={styles.removePill}
-                  >
-                    <Text style={styles.removePillText}>Remove</Text>
-                  </TouchableOpacity>
                 </View>
-              ))}
+              ) : (
+                allowedApps.map(app => (
+                  <View key={app.id} style={styles.appRow}>
+                    <View style={styles.appIconBadgeAllowed}>
+                      <Text style={styles.appIconText}>{app.iconText}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.appName}>{app.name}</Text>
+                      <Text style={styles.appSubText}>Accessible in session</Text>
+                    </View>
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      onPress={() => toggleApp(app.id)}
+                      style={styles.removePill}
+                    >
+                      <Text style={styles.removePillText}>Remove</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))
+              )}
             </View>
 
             {/* Section 2: Blocked Apps */}
@@ -485,5 +507,30 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '800',
+  },
+  emptyAllowedCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#11151D',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    gap: 12,
+  },
+  emptyAllowedIcon: {
+    fontSize: 22,
+  },
+  emptyAllowedTitle: {
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  emptyAllowedText: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    lineHeight: 16,
   },
 });

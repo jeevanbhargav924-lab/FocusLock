@@ -92,12 +92,26 @@ export const PermissionSetupScreen: React.FC<PermissionSetupScreenProps> = ({
   }, []);
 
   useEffect(() => {
-    // Check if permission setup was previously completed by the user
+    // Check if permission setup was previously completed by the user AND permissions are still active
     if (Platform.OS === 'android' && NativeModules.PermissionModule?.isPermissionsCompleted) {
       NativeModules.PermissionModule.isPermissionsCompleted()
-        .then((completed: boolean) => {
+        .then(async (completed: boolean) => {
           if (completed) {
-            handleFinishPermissions();
+            let hasAccess = true;
+            let hasUsage = true;
+            if (NativeModules.PermissionModule?.hasAccessibilityPermission) {
+              try {
+                hasAccess = await NativeModules.PermissionModule.hasAccessibilityPermission();
+              } catch (_) {}
+            }
+            if (NativeModules.PermissionModule?.hasUsagePermission) {
+              try {
+                hasUsage = await NativeModules.PermissionModule.hasUsagePermission();
+              } catch (_) {}
+            }
+            if (hasAccess && hasUsage) {
+              handleFinishPermissions();
+            }
           }
         })
         .catch(() => { });

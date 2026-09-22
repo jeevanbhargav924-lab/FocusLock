@@ -29,7 +29,7 @@ export const CreateSessionScreen: React.FC<CreateSessionScreenProps> = ({
   onCancel,
   onClose,
   onNavigateToAllowedApps,
-  allowedAppsCount = 3,
+  allowedAppsCount = 0,
 }) => {
   const insets = useSafeAreaInsets();
   const [durationMinutes, setDurationMinutes] = useState<number>(60);
@@ -47,8 +47,7 @@ export const CreateSessionScreen: React.FC<CreateSessionScreenProps> = ({
     const title = sessionName.trim() || 'Deep Focus Session';
     if (onStartCreatedSession) {
       onStartCreatedSession(mins, strict, pin, title);
-    }
-    if (onStartSession) {
+    } else if (onStartSession) {
       onStartSession(mins, strict, pin, title);
     }
   };
@@ -196,7 +195,9 @@ export const CreateSessionScreen: React.FC<CreateSessionScreenProps> = ({
             <View style={{ flex: 1 }}>
               <Text style={styles.constraintTitle}>Choose Allowed Apps</Text>
               <Text style={styles.constraintSub}>
-                {allowedAppsCount} apps currently selected
+                {allowedAppsCount > 0
+                  ? `${allowedAppsCount} ${allowedAppsCount === 1 ? 'app' : 'apps'} currently allowed`
+                  : 'All apps will be blocked'}
               </Text>
             </View>
             <Text style={styles.rightArrow}>›</Text>

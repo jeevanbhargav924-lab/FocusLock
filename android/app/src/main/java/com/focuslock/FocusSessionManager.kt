@@ -99,7 +99,13 @@ object FocusSessionManager {
             pkgLower.contains("telecom") ||
             pkgLower.contains("emergency") ||
             pkgLower.contains("permissioncontroller") ||
-            pkgLower.contains("packageinstaller")) return true
+            pkgLower.contains("packageinstaller") ||
+            pkgLower.contains("biometric") ||
+            pkgLower.contains("fingerprint") ||
+            pkgLower.contains("facerecognition") ||
+            pkgLower.contains("keyguard") ||
+            pkgLower.contains("credential") ||
+            pkgLower.contains("authenticator")) return true
 
         val defaultLauncher = getDefaultLauncherPackage(context)?.lowercase()
         if (defaultLauncher != null && pkgLower == defaultLauncher) return true

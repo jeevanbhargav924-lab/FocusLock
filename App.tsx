@@ -67,7 +67,7 @@ function MainAppController(): React.JSX.Element {
   const [sessionMinutes, setSessionMinutes] = useState<number>(60);
   const [activeSessionTitle, setActiveSessionTitle] = useState<string>('Deep Focus Session');
   const [remainingTimeText, setRemainingTimeText] = useState<string>('00:00:00');
-  const [allowedAppsCount, setAllowedAppsCount] = useState<number>(3);
+  const [allowedAppsCount, setAllowedAppsCount] = useState<number>(0);
   const [customBlockedPkgs, setCustomBlockedPkgs] = useState<string[]>([]);
   const [customAllowedPkgs, setCustomAllowedPkgs] = useState<string[]>([]);
 
@@ -243,6 +243,27 @@ function MainAppController(): React.JSX.Element {
           setHasSeenOnboarding(true);
         }
 
+        // 2. Restore Saved Allowed & Blocked Packages
+        const savedAllowed = await AsyncStorage.getItem('@focuslock_allowed_pkgs');
+        const savedBlocked = await AsyncStorage.getItem('@focuslock_blocked_pkgs');
+        if (savedAllowed) {
+          try {
+            const parsedAllowed: string[] = JSON.parse(savedAllowed);
+            if (Array.isArray(parsedAllowed)) {
+              setCustomAllowedPkgs(parsedAllowed);
+              setAllowedAppsCount(parsedAllowed.length);
+            }
+          } catch (_) {}
+        }
+        if (savedBlocked) {
+          try {
+            const parsedBlocked: string[] = JSON.parse(savedBlocked);
+            if (Array.isArray(parsedBlocked)) {
+              setCustomBlockedPkgs(parsedBlocked);
+            }
+          } catch (_) {}
+        }
+
         // Local Mode Initialized
       } catch (e) {
         console.warn('Error checking initial app state:', e);
@@ -384,7 +405,20 @@ function MainAppController(): React.JSX.Element {
           'com.snapchat.android',
         ];
 
-        const finalBlocked = customBlockedPkgs.length > 0 ? customBlockedPkgs : defaultBlocked;
+        let finalBlocked = customBlockedPkgs;
+        if (finalBlocked.length === 0 && Platform.OS === 'android' && NativeModules.PermissionModule?.getInstalledApps) {
+          try {
+            const rawApps: any[] = await NativeModules.PermissionModule.getInstalledApps();
+            if (Array.isArray(rawApps) && rawApps.length > 0) {
+              finalBlocked = rawApps
+                .map(a => a.packageName)
+                .filter(Boolean);
+            }
+          } catch (_) {}
+        }
+        if (finalBlocked.length === 0) {
+          finalBlocked = defaultBlocked;
+        }
 
         await NativeModules.PermissionModule.startFocusSession(
           finalTitle,
@@ -785,11 +819,14 @@ function MainAppController(): React.JSX.Element {
         onRequestClose={() => setShowAllowedApps(false)}>
         <View style={styles.fullModalContainer}>
           <AllowedAppsScreen
+            initialAllowedPkgs={customAllowedPkgs}
             onBack={() => setShowAllowedApps(false)}
             onSaveAllowedApps={(count, blocked, allowed) => {
               setAllowedAppsCount(count);
               setCustomBlockedPkgs(blocked);
               setCustomAllowedPkgs(allowed);
+              AsyncStorage.setItem('@focuslock_allowed_pkgs', JSON.stringify(allowed)).catch(() => {});
+              AsyncStorage.setItem('@focuslock_blocked_pkgs', JSON.stringify(blocked)).catch(() => {});
               setShowAllowedApps(false);
             }}
           />

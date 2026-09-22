@@ -16,7 +16,7 @@ interface PasscodeModalProps {
   mode: 'setup' | 'verify';
   title?: string;
   subtitle?: string;
-  onSuccess: () => void;
+  onSuccess: (pin?: string) => void;
   onCancel: () => void;
 }
 
@@ -123,16 +123,16 @@ export const PasscodeModal: React.FC<PasscodeModalProps> = ({
       try {
         const isValid = await NativeModules.PermissionModule.verifyPasscode(enteredPin);
         if (isValid) {
-          onSuccess();
+          onSuccess(enteredPin);
         } else {
           setErrorMessage('Incorrect passcode. Try again.');
           setPin('');
         }
       } catch (e) {
-        onSuccess();
+        onSuccess(enteredPin);
       }
     } else {
-      onSuccess();
+      onSuccess(enteredPin);
     }
   };
 
@@ -140,13 +140,12 @@ export const PasscodeModal: React.FC<PasscodeModalProps> = ({
     if (Platform.OS === 'android' && NativeModules.PermissionModule?.savePasscode) {
       try {
         await NativeModules.PermissionModule.savePasscode(newPin);
-        Alert.alert('Passcode Saved 🔒', 'Your 4-digit security passcode is now active!');
-        onSuccess();
+        onSuccess(newPin);
       } catch (e) {
-        onSuccess();
+        onSuccess(newPin);
       }
     } else {
-      onSuccess();
+      onSuccess(newPin);
     }
   };
 

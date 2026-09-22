@@ -175,6 +175,7 @@ const styles = StyleSheet.create({
   },
   activeTabIconWrapper: {
     backgroundColor: 'rgba(168, 85, 247, 0.14)',
+    borderRadius:20,
   },
   tabLabel: {
     fontSize: 11,
