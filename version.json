@@ -1,9 +1,9 @@
 {
-  "latestVersion": "1.0.4",
-  "latestVersionCode": 5,
+  "latestVersion": "1.0.5",
+  "latestVersionCode": 7,
   "minSupportedVersionCode": 4,
   "forceUpdate": false,
   "title": "New Update Available! 🚀",
-  "releaseNotes": "• Improved battery performance\n• Enhanced app blocking reliability\n• Bug fixes and UI refinements",
-  "updateUrl": "https://play.google.com/store/apps/details?id=com.focuslock.productivity"
+  "releaseNotes": "• Added Streaks & Achievements Gamification Hub\n• Viral Focus Cards sharing\n• Grounded dock navigation & UI refinements\n• Enhanced app blocking reliability and performance",
+  "updateUrl": "market://details?id=com.focuslock.productivity"
 }
