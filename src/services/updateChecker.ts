@@ -50,17 +50,20 @@ export async function checkForAppUpdate(
     const data = await response.json();
     const latestCode = Number(data.latestVersionCode || 0);
     const minSupportedCode = Number(data.minSupportedVersionCode || 0);
+    const latestVersionName = (data.latestVersion || `${latestCode}.0`).trim();
 
-    const hasUpdate = latestCode > CURRENT_VERSION_CODE;
+    // Prevent showing update popup if device is already running this exact version
+    const isSameVersion = latestVersionName === CURRENT_VERSION_NAME.trim();
+    const hasUpdate = latestCode > CURRENT_VERSION_CODE && !isSameVersion;
     const isForced =
       Boolean(data.forceUpdate) || CURRENT_VERSION_CODE < minSupportedCode;
 
     return {
       hasUpdate,
       isForced,
-      latestVersion: data.latestVersion || `${latestCode}.0`,
+      latestVersion: latestVersionName,
       latestVersionCode: latestCode,
-      title: data.title || 'Update Available',
+      title: data.title || 'New Update Available! 🚀',
       releaseNotes:
         data.releaseNotes ||
         'A new version of FocusLock is available with performance improvements and bug fixes.',

@@ -273,8 +273,20 @@ function MainAppController(): React.JSX.Element {
     checkInitialState();
 
     // Check for remote app updates asynchronously
-    checkForAppUpdate().then(info => {
+    checkForAppUpdate().then(async info => {
       if (info && info.hasUpdate) {
+        if (!info.isForced) {
+          try {
+            const lastDismissed = await AsyncStorage.getItem('@last_update_dismissed_time');
+            if (lastDismissed) {
+              const elapsed = Date.now() - parseInt(lastDismissed, 10);
+              // Snooze optional update prompt for 24 hours after user taps "Later"
+              if (elapsed < 24 * 60 * 60 * 1000) {
+                return;
+              }
+            }
+          } catch {}
+        }
         setUpdateInfo(info);
         setShowUpdateModal(true);
       }
@@ -888,7 +900,12 @@ function MainAppController(): React.JSX.Element {
       <UpdateModal
         visible={showUpdateModal}
         updateInfo={updateInfo}
-        onDismiss={() => setShowUpdateModal(false)}
+        onDismiss={async () => {
+          setShowUpdateModal(false);
+          try {
+            await AsyncStorage.setItem('@last_update_dismissed_time', Date.now().toString());
+          } catch {}
+        }}
       />
     </ScreenLayout>
   );
