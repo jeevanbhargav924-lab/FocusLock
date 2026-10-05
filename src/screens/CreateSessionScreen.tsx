@@ -21,6 +21,8 @@ interface CreateSessionScreenProps {
   onClose?: () => void;
   onNavigateToAllowedApps?: () => void;
   allowedAppsCount?: number;
+  blockedAppsCount?: number;
+  appSelectionMode?: 'blocklist' | 'allowlist';
 }
 
 export const CreateSessionScreen: React.FC<CreateSessionScreenProps> = ({
@@ -30,6 +32,8 @@ export const CreateSessionScreen: React.FC<CreateSessionScreenProps> = ({
   onClose,
   onNavigateToAllowedApps,
   allowedAppsCount = 0,
+  blockedAppsCount = 5,
+  appSelectionMode = 'blocklist',
 }) => {
   const insets = useSafeAreaInsets();
   const [durationMinutes, setDurationMinutes] = useState<number>(60);
@@ -181,7 +185,7 @@ export const CreateSessionScreen: React.FC<CreateSessionScreenProps> = ({
         <View style={styles.card}>
           <Text style={styles.cardHeaderLabel}>ENVIRONMENT CONSTRAINTS</Text>
 
-          {/* Item 1: Choose Allowed Apps */}
+          {/* Item 1: Choose Blocked / Allowed Apps */}
           <TouchableOpacity
             activeOpacity={0.7}
             style={styles.constraintRow}
@@ -190,13 +194,23 @@ export const CreateSessionScreen: React.FC<CreateSessionScreenProps> = ({
             }}
           >
             <View style={styles.constraintIconBox}>
-              <Text style={styles.constraintIcon}>▦</Text>
+              <Text style={styles.constraintIcon}>
+                {appSelectionMode === 'blocklist' ? '🚫' : '▦'}
+              </Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.constraintTitle}>Choose Allowed Apps</Text>
+              <Text style={styles.constraintTitle}>
+                {appSelectionMode === 'blocklist'
+                  ? 'Distraction App Blocking'
+                  : 'Choose Allowed Apps'}
+              </Text>
               <Text style={styles.constraintSub}>
-                {allowedAppsCount > 0
-                  ? `${allowedAppsCount} ${allowedAppsCount === 1 ? 'app' : 'apps'} currently allowed`
+                {appSelectionMode === 'blocklist'
+                  ? blockedAppsCount > 0
+                    ? `${blockedAppsCount} ${blockedAppsCount === 1 ? 'app' : 'apps'} blocked • others allowed`
+                    : 'No apps blocked • tap to configure'
+                  : allowedAppsCount > 0
+                  ? `${allowedAppsCount} ${allowedAppsCount === 1 ? 'app' : 'apps'} allowed • others blocked`
                   : 'All apps will be blocked'}
               </Text>
             </View>

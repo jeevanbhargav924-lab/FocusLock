@@ -40,6 +40,14 @@ function App(): React.JSX.Element {
   );
 }
 
+const DEFAULT_TOP_5_BLOCKED = [
+  'com.instagram.android',
+  'com.snapchat.android',
+  'com.android.chrome',
+  'com.facebook.katana',
+  'com.google.android.youtube',
+];
+
 function MainAppController(): React.JSX.Element {
   const insets = useSafeAreaInsets();
   const [flowStep, setFlowStep] = useState<AppFlowStep>('splash');
@@ -67,8 +75,10 @@ function MainAppController(): React.JSX.Element {
   const [sessionMinutes, setSessionMinutes] = useState<number>(60);
   const [activeSessionTitle, setActiveSessionTitle] = useState<string>('Deep Focus Session');
   const [remainingTimeText, setRemainingTimeText] = useState<string>('00:00:00');
+  const [appSelectionMode, setAppSelectionMode] = useState<'blocklist' | 'allowlist'>('blocklist');
+  const [blockedAppsCount, setBlockedAppsCount] = useState<number>(5);
   const [allowedAppsCount, setAllowedAppsCount] = useState<number>(0);
-  const [customBlockedPkgs, setCustomBlockedPkgs] = useState<string[]>([]);
+  const [customBlockedPkgs, setCustomBlockedPkgs] = useState<string[]>(DEFAULT_TOP_5_BLOCKED);
   const [customAllowedPkgs, setCustomAllowedPkgs] = useState<string[]>([]);
 
   // Overlay / Modal Visibility
@@ -243,7 +253,11 @@ function MainAppController(): React.JSX.Element {
           setHasSeenOnboarding(true);
         }
 
-        // 2. Restore Saved Allowed & Blocked Packages
+        // 2. Restore Saved Mode, Allowed & Blocked Packages
+        const savedMode = await AsyncStorage.getItem('@focuslock_app_filter_mode');
+        if (savedMode === 'allowlist' || savedMode === 'blocklist') {
+          setAppSelectionMode(savedMode);
+        }
         const savedAllowed = await AsyncStorage.getItem('@focuslock_allowed_pkgs');
         const savedBlocked = await AsyncStorage.getItem('@focuslock_blocked_pkgs');
         if (savedAllowed) {
@@ -260,8 +274,13 @@ function MainAppController(): React.JSX.Element {
             const parsedBlocked: string[] = JSON.parse(savedBlocked);
             if (Array.isArray(parsedBlocked)) {
               setCustomBlockedPkgs(parsedBlocked);
+              setBlockedAppsCount(parsedBlocked.length);
             }
           } catch (_) {}
+        } else {
+          // If no custom blocked saved yet, default to Top 5 distractions
+          setCustomBlockedPkgs(DEFAULT_TOP_5_BLOCKED);
+          setBlockedAppsCount(DEFAULT_TOP_5_BLOCKED.length);
         }
 
         // Local Mode Initialized
@@ -418,26 +437,21 @@ function MainAppController(): React.JSX.Element {
         ];
 
         let finalBlocked = customBlockedPkgs;
-        if (finalBlocked.length === 0 && Platform.OS === 'android' && NativeModules.PermissionModule?.getInstalledApps) {
-          try {
-            const rawApps: any[] = await NativeModules.PermissionModule.getInstalledApps();
-            if (Array.isArray(rawApps) && rawApps.length > 0) {
-              finalBlocked = rawApps
-                .map(a => a.packageName)
-                .filter(Boolean);
-            }
-          } catch (_) {}
-        }
         if (finalBlocked.length === 0) {
-          finalBlocked = defaultBlocked;
+          finalBlocked = DEFAULT_TOP_5_BLOCKED;
         }
+
+        // In blocklist mode (the recommended flow):
+        // Pass [] for allowed apps so native engine allows all non-blocked apps by default!
+        // In allowlist mode: pass customAllowedPkgs to enforce whitelist.
+        const finalAllowed = appSelectionMode === 'allowlist' ? customAllowedPkgs : [];
 
         await NativeModules.PermissionModule.startFocusSession(
           finalTitle,
           minutes,
           strictMode,
           finalBlocked,
-          customAllowedPkgs,
+          finalAllowed,
           sessionPin
         );
       } catch (e) {
@@ -733,6 +747,8 @@ function MainAppController(): React.JSX.Element {
             onStartCreatedSession={handleStartActiveSession}
             onNavigateToAllowedApps={handleOpenAllowedApps}
             allowedAppsCount={allowedAppsCount}
+            blockedAppsCount={blockedAppsCount}
+            appSelectionMode={appSelectionMode}
           />
         );
 
@@ -785,6 +801,7 @@ function MainAppController(): React.JSX.Element {
       <Modal
         visible={showCreateSession}
         animationType="slide"
+        statusBarTranslucent={true}
         onRequestClose={() => setShowCreateSession(false)}>
         <View style={styles.fullModalContainer}>
           <CreateSessionScreen
@@ -792,6 +809,8 @@ function MainAppController(): React.JSX.Element {
             onStartCreatedSession={handleStartActiveSession}
             onNavigateToAllowedApps={handleOpenAllowedApps}
             allowedAppsCount={allowedAppsCount}
+            blockedAppsCount={blockedAppsCount}
+            appSelectionMode={appSelectionMode}
           />
         </View>
       </Modal>
@@ -799,6 +818,7 @@ function MainAppController(): React.JSX.Element {
       <Modal
         visible={showSessionCompleted}
         animationType="slide"
+        statusBarTranslucent={true}
         onRequestClose={() => setShowSessionCompleted(false)}>
         <View style={styles.fullModalContainer}>
           <SessionCompletedScreen
@@ -828,17 +848,34 @@ function MainAppController(): React.JSX.Element {
       <Modal
         visible={showAllowedApps}
         animationType="slide"
+        statusBarTranslucent={true}
         onRequestClose={() => setShowAllowedApps(false)}>
         <View style={styles.fullModalContainer}>
           <AllowedAppsScreen
             initialAllowedPkgs={customAllowedPkgs}
+            initialBlockedPkgs={customBlockedPkgs}
+            initialMode={appSelectionMode}
             onBack={() => setShowAllowedApps(false)}
-            onSaveAllowedApps={(count, blocked, allowed) => {
-              setAllowedAppsCount(count);
-              setCustomBlockedPkgs(blocked);
-              setCustomAllowedPkgs(allowed);
-              AsyncStorage.setItem('@focuslock_allowed_pkgs', JSON.stringify(allowed)).catch(() => {});
-              AsyncStorage.setItem('@focuslock_blocked_pkgs', JSON.stringify(blocked)).catch(() => {});
+            onSaveAllowedApps={(count, blocked, allowed, mode) => {
+              const activeMode = mode || 'blocklist';
+              setAppSelectionMode(activeMode);
+              if (activeMode === 'blocklist') {
+                setBlockedAppsCount(count);
+                setAllowedAppsCount(allowed.length);
+                setCustomBlockedPkgs(blocked);
+                setCustomAllowedPkgs([]);
+                AsyncStorage.setItem('@focuslock_app_filter_mode', 'blocklist').catch(() => {});
+                AsyncStorage.setItem('@focuslock_blocked_pkgs', JSON.stringify(blocked)).catch(() => {});
+                AsyncStorage.setItem('@focuslock_allowed_pkgs', JSON.stringify([])).catch(() => {});
+              } else {
+                setAllowedAppsCount(count);
+                setBlockedAppsCount(blocked.length);
+                setCustomAllowedPkgs(allowed);
+                setCustomBlockedPkgs(blocked);
+                AsyncStorage.setItem('@focuslock_app_filter_mode', 'allowlist').catch(() => {});
+                AsyncStorage.setItem('@focuslock_allowed_pkgs', JSON.stringify(allowed)).catch(() => {});
+                AsyncStorage.setItem('@focuslock_blocked_pkgs', JSON.stringify(blocked)).catch(() => {});
+              }
               setShowAllowedApps(false);
             }}
           />
@@ -863,6 +900,7 @@ function MainAppController(): React.JSX.Element {
       <Modal
         visible={showAchievementsModal}
         animationType="slide"
+        statusBarTranslucent={true}
         onRequestClose={() => setShowAchievementsModal(false)}>
         <View style={styles.fullModalContainer}>
           <StreaksAchievementsScreen

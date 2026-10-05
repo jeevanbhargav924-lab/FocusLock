@@ -7,7 +7,8 @@ import {
   TouchableOpacity,
   Share,
   ActivityIndicator,
-  SafeAreaView,
+  Platform,
+  StatusBar,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fonts, spacing } from '../theme';
@@ -28,6 +29,9 @@ export const StreaksAchievementsScreen: React.FC<StreaksAchievementsScreenProps>
   userId = 'default_user',
 }) => {
   const insets = useSafeAreaInsets();
+  const topInset = Platform.OS === 'android'
+    ? Math.max(StatusBar.currentHeight || 0, insets.top, 38)
+    : Math.max(insets.top, 16);
   const [data, setData] = useState<UserAchievementsData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [filter, setFilter] = useState<'all' | 'unlocked' | 'locked'>('all');
@@ -66,9 +70,14 @@ export const StreaksAchievementsScreen: React.FC<StreaksAchievementsScreenProps>
   });
 
   return (
-    <SafeAreaView style={styles.safeContainer}>
+    <View style={styles.safeContainer}>
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="transparent"
+        translucent={true}
+      />
       {/* Top Header Bar */}
-      <View style={styles.topHeader}>
+      <View style={[styles.topHeader, { paddingTop: topInset + 10 }]}>
         {onClose && (
           <TouchableOpacity
             activeOpacity={0.7}
@@ -278,7 +287,7 @@ export const StreaksAchievementsScreen: React.FC<StreaksAchievementsScreenProps>
           ))}
         </ScrollView>
       )}
-    </SafeAreaView>
+    </View>
   );
 };
 

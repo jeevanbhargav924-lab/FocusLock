@@ -17,6 +17,10 @@ import {
   PermissionDisclosureModal,
   PermissionDisclosureType,
 } from '../components/PermissionDisclosureModal';
+import {
+  PermissionWalkthroughModal,
+  WalkthroughType,
+} from '../components/PermissionWalkthroughModal';
 
 interface PermissionSetupScreenProps {
   onCompletePermissions?: () => void;
@@ -39,6 +43,29 @@ export const PermissionSetupScreen: React.FC<PermissionSetupScreenProps> = ({
 
   // Disclosure modal state
   const [activeModalType, setActiveModalType] = useState<PermissionDisclosureType | null>(null);
+
+  // Walkthrough modal state
+  const [walkthroughVisible, setWalkthroughVisible] = useState<boolean>(false);
+  const [walkthroughType, setWalkthroughType] = useState<WalkthroughType>('accessibility');
+
+  const handleOpenWalkthrough = (type: WalkthroughType) => {
+    setWalkthroughType(type);
+    setWalkthroughVisible(true);
+  };
+
+  const handleWalkthroughOpenSettings = (type: WalkthroughType) => {
+    switch (type) {
+      case 'accessibility':
+        requestAccessibilityPermission();
+        break;
+      case 'usage':
+        requestUsagePermission();
+        break;
+      case 'battery':
+        requestBatteryPermission();
+        break;
+    }
+  };
 
   const allPermissionsGranted = Boolean(accessibilityAccess && usageAccess && batteryAccess);
 
@@ -258,6 +285,29 @@ export const PermissionSetupScreen: React.FC<PermissionSetupScreenProps> = ({
         </View>
       </View>
 
+      {/* Visual Settings Guide Banner */}
+      <TouchableOpacity
+        style={styles.walkthroughBanner}
+        activeOpacity={0.85}
+        onPress={() => handleOpenWalkthrough('accessibility')}>
+        <View style={styles.walkthroughBannerLeft}>
+          <View style={styles.walkthroughBannerIconBadge}>
+            <Text style={styles.walkthroughBannerIcon}>📺</Text>
+          </View>
+          <View style={styles.walkthroughBannerTextCol}>
+            <Text style={styles.walkthroughBannerTitle}>
+              Confused by Android Settings?
+            </Text>
+            <Text style={styles.walkthroughBannerSub}>
+              View device screenshots & step-by-step walkthrough
+            </Text>
+          </View>
+        </View>
+        <View style={styles.walkthroughBannerBadge}>
+          <Text style={styles.walkthroughBannerBadgeText}>View Guide ➔</Text>
+        </View>
+      </TouchableOpacity>
+
       {/* Card 1: Accessibility Service */}
       <View style={styles.card}>
         <View style={styles.cardTopRow}>
@@ -272,6 +322,12 @@ export const PermissionSetupScreen: React.FC<PermissionSetupScreenProps> = ({
           </View>
         </View>
         <View style={styles.cardButtonRow}>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            style={styles.guideLinkBtn}
+            onPress={() => handleOpenWalkthrough('accessibility')}>
+            <Text style={styles.guideLinkBtnText}>💡 How to enable?</Text>
+          </TouchableOpacity>
           <TouchableOpacity
             activeOpacity={0.8}
             style={[
@@ -301,6 +357,12 @@ export const PermissionSetupScreen: React.FC<PermissionSetupScreenProps> = ({
           </View>
         </View>
         <View style={styles.cardButtonRow}>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            style={styles.guideLinkBtn}
+            onPress={() => handleOpenWalkthrough('usage')}>
+            <Text style={styles.guideLinkBtnText}>💡 How to enable?</Text>
+          </TouchableOpacity>
           <TouchableOpacity
             activeOpacity={0.8}
             style={[styles.allowButton, usageAccess && styles.grantedButton]}
@@ -355,6 +417,12 @@ export const PermissionSetupScreen: React.FC<PermissionSetupScreenProps> = ({
         </View>
         <View style={styles.cardButtonRow}>
           <TouchableOpacity
+            activeOpacity={0.7}
+            style={styles.guideLinkBtn}
+            onPress={() => handleOpenWalkthrough('battery')}>
+            <Text style={styles.guideLinkBtnText}>💡 How to enable?</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
             activeOpacity={0.8}
             style={[styles.allowButton, batteryAccess && styles.grantedButton]}
             onPress={() => handlePressPermission('battery')}
@@ -399,6 +467,19 @@ export const PermissionSetupScreen: React.FC<PermissionSetupScreenProps> = ({
         type={activeModalType}
         onClose={() => setActiveModalType(null)}
         onConfirm={handleModalConfirm}
+        onOpenWalkthrough={(type) => {
+          if (type !== 'notification') {
+            handleOpenWalkthrough(type as WalkthroughType);
+          }
+        }}
+      />
+
+      {/* Visual Settings Walkthrough Modal */}
+      <PermissionWalkthroughModal
+        visible={walkthroughVisible}
+        initialType={walkthroughType}
+        onClose={() => setWalkthroughVisible(false)}
+        onOpenSettings={handleWalkthroughOpenSettings}
       />
     </ScrollView>
   );
@@ -522,8 +603,75 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   cardButtonRow: {
-    alignItems: 'flex-end',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginTop: spacing.sm + 2,
+  },
+  guideLinkBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+  },
+  guideLinkBtnText: {
+    color: '#8EAEFF',
+    fontSize: 12.5,
+    fontWeight: '600',
+  },
+  walkthroughBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(168, 85, 247, 0.12)',
+    borderRadius: radius.md,
+    padding: spacing.md - 2,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(168, 85, 247, 0.3)',
+  },
+  walkthroughBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 8,
+  },
+  walkthroughBannerIconBadge: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#1E2530',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(168, 85, 247, 0.3)',
+  },
+  walkthroughBannerIcon: {
+    fontSize: 18,
+  },
+  walkthroughBannerTextCol: {
+    flex: 1,
+  },
+  walkthroughBannerTitle: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  walkthroughBannerSub: {
+    color: '#AEB6C2',
+    fontSize: 11.5,
+    lineHeight: 16,
+  },
+  walkthroughBannerBadge: {
+    backgroundColor: '#A855F7',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  walkthroughBannerBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11.5,
+    fontWeight: '800',
   },
   allowButton: {
     backgroundColor: '#A855F7',

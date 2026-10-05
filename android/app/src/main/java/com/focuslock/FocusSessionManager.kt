@@ -550,6 +550,7 @@ object FocusSessionManager {
             if (bLower.contains("youtube") && pkgLower.contains("youtube")) return true
             if (bLower.contains("instagram") && pkgLower.contains("instagram")) return true
             if (bLower.contains("facebook") && pkgLower.contains("facebook")) return true
+            if (bLower.contains("snapchat") && pkgLower.contains("snapchat")) return true
             if (bLower.contains("reddit") && pkgLower.contains("reddit")) return true
             if (bLower.contains("twitter") && pkgLower.contains("twitter")) return true
             if (bLower.contains("tiktok") && (pkgLower.contains("musically") || pkgLower.contains("tiktok"))) return true

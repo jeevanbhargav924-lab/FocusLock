@@ -13,6 +13,10 @@ import {
 import { colors, spacing, radius } from '../theme';
 import { BackIcon } from '../utils/Icons';
 import { Toast } from '../components/Toast';
+import {
+  PermissionWalkthroughModal,
+  WalkthroughType,
+} from '../components/PermissionWalkthroughModal';
 
 interface HelpSupportScreenProps {
   onBack: () => void;
@@ -27,6 +31,25 @@ interface FAQItem {
 
 export const HelpSupportScreen: React.FC<HelpSupportScreenProps> = ({ onBack }) => {
   const [expandedId, setExpandedId] = useState<string | null>('1');
+  const [showWalkthrough, setShowWalkthrough] = useState<boolean>(false);
+  const [walkthroughTab, setWalkthroughTab] = useState<WalkthroughType>('accessibility');
+
+  const handleOpenGuide = (type: WalkthroughType = 'accessibility') => {
+    setWalkthroughTab(type);
+    setShowWalkthrough(true);
+  };
+
+  const handleOpenSettingsFromGuide = (type: WalkthroughType) => {
+    if (Platform.OS === 'android' && NativeModules.PermissionModule) {
+      if (type === 'accessibility' && NativeModules.PermissionModule.openAccessibilitySettings) {
+        NativeModules.PermissionModule.openAccessibilitySettings();
+      } else if (type === 'usage' && NativeModules.PermissionModule.openUsageAccessSettings) {
+        NativeModules.PermissionModule.openUsageAccessSettings();
+      } else if (type === 'battery' && NativeModules.PermissionModule.openBatteryOptimizationSettings) {
+        NativeModules.PermissionModule.openBatteryOptimizationSettings();
+      }
+    }
+  };
 
   const faqs: FAQItem[] = [
     {
@@ -138,6 +161,26 @@ export const HelpSupportScreen: React.FC<HelpSupportScreenProps> = ({ onBack }) 
             </TouchableOpacity>
           </View>
 
+          {/* Visual Walkthrough Card */}
+          <View style={styles.guideCard}>
+            <View style={styles.diagnosticHeader}>
+              <Text style={styles.diagnosticIcon}>📺</Text>
+              <Text style={styles.diagnosticTitle}>Settings Visual Guide</Text>
+            </View>
+            <Text style={styles.diagnosticSub}>
+              View step-by-step device screenshots showing where to find Focus Lock in Android Settings (Accessibility, Usage Access, & Battery).
+            </Text>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={styles.guideBtn}
+              onPress={() => handleOpenGuide('accessibility')}
+            >
+              <Text style={styles.guideBtnText}>
+                Open Visual Guide →
+              </Text>
+            </TouchableOpacity>
+          </View>
+
           {/* FAQ Accordion Section */}
           <Text style={styles.sectionTitle}>FREQUENTLY ASKED QUESTIONS</Text>
           <View style={styles.faqList}>
@@ -189,6 +232,14 @@ export const HelpSupportScreen: React.FC<HelpSupportScreenProps> = ({ onBack }) 
             FocusLock Support • Response time usually within 24 hours
           </Text>
         </ScrollView>
+
+        {/* Settings Visual Walkthrough Modal */}
+        <PermissionWalkthroughModal
+          visible={showWalkthrough}
+          initialType={walkthroughTab}
+          onClose={() => setShowWalkthrough(false)}
+          onOpenSettings={handleOpenSettingsFromGuide}
+        />
       </View>
     </SafeAreaView>
   );
@@ -286,6 +337,29 @@ const styles = StyleSheet.create({
   },
   diagnosticBtnText: {
     color: colors.primary,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  guideCard: {
+    backgroundColor: 'rgba(168, 85, 247, 0.08)',
+    borderRadius: 16,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(168, 85, 247, 0.28)',
+    marginBottom: spacing.xl,
+  },
+  guideBtn: {
+    backgroundColor: '#A855F7',
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.lg,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing.xs,
+  },
+  guideBtnText: {
+    color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',
   },
