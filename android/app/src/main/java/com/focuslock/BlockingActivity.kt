@@ -1,22 +1,29 @@
 package com.focuslock
 
+import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
+import android.media.MediaPlayer
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.text.Spannable
 import android.text.SpannableString
 import android.text.style.ForegroundColorSpan
+import android.util.TypedValue
 import android.view.Gravity
+import android.view.View
+import android.view.ViewGroup
 import android.view.Window
 import android.view.WindowManager
-import android.widget.Button
-import android.widget.FrameLayout
-import android.widget.LinearLayout
-import android.widget.TextView
+import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 
 class BlockingActivity : AppCompatActivity() {
@@ -28,6 +35,15 @@ class BlockingActivity : AppCompatActivity() {
 
     private lateinit var remainingTimeTv: TextView
     private lateinit var subTv: TextView
+    private lateinit var videoView: VideoView
+    private lateinit var replayContainer: FrameLayout
+    private lateinit var muteButtonTv: TextView
+    private var mediaPlayer: MediaPlayer? = null
+    private var audioManager: AudioManager? = null
+    private var audioFocusRequest: AudioFocusRequest? = null
+    private var isMuted = false
+    private var currentVideo: MotivationalVideo? = null
+
     private val handler = Handler(Looper.getMainLooper())
     private val updateRunnable = object : Runnable {
         override fun run() {
@@ -43,6 +59,7 @@ class BlockingActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        @Suppress("DEPRECATION")
         overridePendingTransition(0, 0)
 
         // Capture system back button to safely return home instead of opening the blocked app
@@ -52,190 +69,250 @@ class BlockingActivity : AppCompatActivity() {
             }
         })
 
-        // Make Fullscreen
+        // Fullscreen setup
         requestWindowFeature(Window.FEATURE_NO_TITLE)
+        @Suppress("DEPRECATION")
         window.setFlags(
             WindowManager.LayoutParams.FLAG_FULLSCREEN,
             WindowManager.LayoutParams.FLAG_FULLSCREEN
         )
 
+        audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+
         val appName = intent.getStringExtra(EXTRA_BLOCKED_APP_NAME)?.takeIf { it.isNotBlank() } ?: "This App"
         val activeSession = FocusSessionManager.getActiveSession(this)
-        val sessionGoal = activeSession?.title.takeIf { !it.isNullOrBlank() } ?: "Study"
-        val randomQuote = MotivationQuotes.getRandomQuote()
+        val sessionGoal = activeSession?.title.takeIf { !it.isNullOrBlank() } ?: "Deep Focus Session"
 
-        // Root Container
+        // Select a motivational video
+        currentVideo = MotivationalVideoManager.getRandomVideo()
+        val video = currentVideo!!
+
+        // Scroll Container
+        val scrollView = ScrollView(this).apply {
+            setBackgroundColor(Color.parseColor("#070A10"))
+            isFillViewport = true
+            overScrollMode = View.OVER_SCROLL_NEVER
+        }
+
+        // Root vertical layout
         val rootLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.parseColor("#070A10"))
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(dp(20), dp(24), dp(20), dp(32))
+        }
+        scrollView.addView(rootLayout, FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        ))
+
+        // 1. ACCESS RESTRICTED Label
+        val accessRestrictedTv = TextView(this).apply {
+            text = "ACCESS RESTRICTED"
+            setTextColor(Color.parseColor("#FF5252"))
+            textSize = 11.5f
+            typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
-            setPadding(48, 64, 48, 64)
+            letterSpacing = 0.12f
+            setPadding(0, 0, 0, dp(4))
         }
+        rootLayout.addView(accessRestrictedTv)
 
-        // Concentric Lock Graphic Circles
-        val outerRing3Drawable = GradientDrawable().apply {
-            shape = GradientDrawable.OVAL
-            setStroke(2, Color.parseColor("#1FFF5252"))
+        // 2. App Locked Title
+        subTv = TextView(this).apply {
+            text = "$appName is Locked"
+            setTextColor(Color.WHITE)
+            textSize = 24f
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setPadding(0, 0, 0, dp(6))
         }
-        val outerRing3 = FrameLayout(this).apply {
-            background = outerRing3Drawable
-        }
+        rootLayout.addView(subTv)
 
-        val outerRing2Drawable = GradientDrawable().apply {
-            shape = GradientDrawable.OVAL
-            setStroke(2, Color.parseColor("#40FF5252"))
+        // 3. Goal Chip
+        val goalChipDrawable = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = dp(12).toFloat()
+            setColor(Color.parseColor("#1F818CF8"))
+            setStroke(dp(1), Color.parseColor("#40818CF8"))
         }
-        val outerRing2 = FrameLayout(this).apply {
-            background = outerRing2Drawable
-        }
-
-        val redRingDrawable = GradientDrawable().apply {
-            shape = GradientDrawable.OVAL
-            setColor(Color.parseColor("#0E1420"))
-            setStroke(8, Color.parseColor("#FF5252"))
-        }
-        val redRing = FrameLayout(this).apply {
-            background = redRingDrawable
-        }
-
-        val lockEmojiTv = TextView(this).apply {
-            text = "🔒"
-            textSize = 46f
+        val goalChipTv = TextView(this).apply {
+            text = "🎯 $sessionGoal"
+            setTextColor(Color.parseColor("#818CF8"))
+            textSize = 12f
+            typeface = Typeface.DEFAULT_BOLD
+            background = goalChipDrawable
+            setPadding(dp(12), dp(4), dp(12), dp(4))
             gravity = Gravity.CENTER
         }
-        redRing.addView(lockEmojiTv, FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.WRAP_CONTENT,
-            FrameLayout.LayoutParams.WRAP_CONTENT
+        val goalParams = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        ).apply {
+            setMargins(0, 0, 0, dp(14))
+        }
+        rootLayout.addView(goalChipTv, goalParams)
+
+        // 4. Video Player Card
+        val videoCardDrawable = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = dp(16).toFloat()
+            setColor(Color.parseColor("#0F172A"))
+            setStroke(dp(1), Color.parseColor("#25FFFFFF"))
+        }
+
+        val videoCard = FrameLayout(this).apply {
+            background = videoCardDrawable
+            clipToOutline = true
+        }
+
+        val videoCardHeight = dp(190)
+        val videoCardParams = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            videoCardHeight
+        ).apply {
+            setMargins(0, 0, 0, dp(8))
+        }
+
+        // Native VideoView
+        videoView = VideoView(this).apply {
+            val videoUri = Uri.parse("android.resource://" + packageName + "/" + video.rawResId)
+            setVideoURI(videoUri)
+        }
+        videoCard.addView(videoView, FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT
         ).apply {
             gravity = Gravity.CENTER
         })
 
-        val redRingParams = FrameLayout.LayoutParams(280, 280).apply {
-            gravity = Gravity.CENTER
+        // Replay Overlay Container (hidden while playing)
+        replayContainer = FrameLayout(this).apply {
+            setBackgroundColor(Color.parseColor("#99070A10"))
+            visibility = View.GONE
         }
-        outerRing2.addView(redRing, redRingParams)
 
-        val outerRing2Params = FrameLayout.LayoutParams(360, 360).apply {
-            gravity = Gravity.CENTER
-        }
-        outerRing3.addView(outerRing2, outerRing2Params)
-
-        val graphicParams = LinearLayout.LayoutParams(440, 440).apply {
-            gravity = Gravity.CENTER
-            setMargins(0, 0, 0, 32)
-        }
-        rootLayout.addView(outerRing3, graphicParams)
-
-        // ACCESS RESTRICTED Label
-        val accessRestrictedTv = TextView(this).apply {
-            text = "ACCESS RESTRICTED"
-            setTextColor(Color.parseColor("#FF5252"))
-            textSize = 12f
-            typeface = Typeface.DEFAULT_BOLD
-            gravity = Gravity.CENTER
-            letterSpacing = 0.12f
-            setPadding(0, 0, 0, 8)
-        }
-        rootLayout.addView(accessRestrictedTv)
-
-        // App Blocked Subtitle
-        subTv = TextView(this).apply {
-            text = "$appName is Locked"
-            setTextColor(Color.WHITE)
-            textSize = 26f
-            typeface = Typeface.DEFAULT_BOLD
-            gravity = Gravity.CENTER
-            setPadding(0, 0, 0, 32)
-        }
-        rootLayout.addView(subTv)
-
-        // Card 1: Your Focus Goal Card
-        val goalCardDrawable = GradientDrawable().apply {
+        val replayBtnDrawable = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
-            cornerRadius = 32f
-            setColor(Color.parseColor("#0F172A"))
-            setStroke(2, Color.parseColor("#15FFFFFF"))
+            cornerRadius = dp(20).toFloat()
+            setColor(Color.parseColor("#E64F46E5"))
+            setStroke(dp(1), Color.parseColor("#818CF8"))
         }
 
-        val goalCard = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            background = goalCardDrawable
-            setPadding(40, 28, 40, 28)
-            gravity = Gravity.CENTER
-        }
-
-        val goalHeaderTv = TextView(this).apply {
-            text = "🎯 YOUR FOCUS GOAL"
-            setTextColor(Color.parseColor("#818CF8"))
-            textSize = 12f
-            typeface = Typeface.DEFAULT_BOLD
-            letterSpacing = 0.08f
-            gravity = Gravity.CENTER
-        }
-        goalCard.addView(goalHeaderTv)
-
-        val goalTitleTv = TextView(this).apply {
-            text = sessionGoal
+        val replayBtn = TextView(this).apply {
+            text = "🔄  Replay Motivation"
             setTextColor(Color.WHITE)
-            textSize = 20f
+            textSize = 12.5f
             typeface = Typeface.DEFAULT_BOLD
+            background = replayBtnDrawable
+            setPadding(dp(16), dp(10), dp(16), dp(10))
             gravity = Gravity.CENTER
-            setPadding(0, 8, 0, 0)
+            setOnClickListener {
+                replayContainer.visibility = View.GONE
+                requestAudioFocus()
+                videoView.seekTo(0)
+                videoView.start()
+            }
         }
-        goalCard.addView(goalTitleTv)
-
-        val goalCardParams = LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
+        replayContainer.addView(replayBtn, FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
         ).apply {
-            setMargins(0, 0, 0, 20)
-        }
-        rootLayout.addView(goalCard, goalCardParams)
-
-        // Card 2: Motivation / Why It's Blocked Card
-        val motivationCardDrawable = GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = 32f
-            setColor(Color.parseColor("#0F172A"))
-            setStroke(2, Color.parseColor("#15FFFFFF"))
-        }
-
-        val motivationCard = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            background = motivationCardDrawable
-            setPadding(40, 28, 40, 28)
             gravity = Gravity.CENTER
+        })
+        videoCard.addView(replayContainer, FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT
+        ))
+
+        // Top Overlay Bar: Badge and Mute Button
+        val topOverlayBar = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(12), dp(10), dp(12), 0)
         }
 
-        val motivationHeaderTv = TextView(this).apply {
-            text = "💡 WHY IT'S BLOCKED"
-            setTextColor(Color.parseColor("#F59E0B"))
-            textSize = 12f
+        val badgeDrawable = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = dp(12).toFloat()
+            setColor(Color.parseColor("#D0070A10"))
+            setStroke(dp(1), Color.parseColor("#20FFFFFF"))
+        }
+        val badgeTv = TextView(this).apply {
+            text = "🎯 FOCUS MOTIVATION"
+            setTextColor(Color.parseColor("#818CF8"))
+            textSize = 10f
             typeface = Typeface.DEFAULT_BOLD
             letterSpacing = 0.08f
+            background = badgeDrawable
+            setPadding(dp(10), dp(4), dp(10), dp(4))
+        }
+        topOverlayBar.addView(badgeTv, LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        ))
+
+        val spacer = View(this)
+        topOverlayBar.addView(spacer, LinearLayout.LayoutParams(
+            0,
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            1f
+        ))
+
+        val muteBtnDrawable = GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setColor(Color.parseColor("#D0070A10"))
+            setStroke(dp(1), Color.parseColor("#20FFFFFF"))
+        }
+        muteButtonTv = TextView(this).apply {
+            text = "🔊"
+            textSize = 14f
+            gravity = Gravity.CENTER
+            background = muteBtnDrawable
+            setOnClickListener {
+                toggleMute()
+            }
+        }
+        topOverlayBar.addView(muteButtonTv, LinearLayout.LayoutParams(dp(32), dp(32)))
+        videoCard.addView(topOverlayBar, FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        ))
+
+        rootLayout.addView(videoCard, videoCardParams)
+
+        // 5. Motivational Quote Card below Video
+        val subCardDrawable = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = dp(14).toFloat()
+            setColor(Color.parseColor("#D90F172A"))
+            setStroke(dp(1), Color.parseColor("#12FFFFFF"))
+        }
+        val subCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = subCardDrawable
+            setPadding(dp(16), dp(10), dp(16), dp(10))
             gravity = Gravity.CENTER
         }
-        motivationCard.addView(motivationHeaderTv)
 
         val quoteTv = TextView(this).apply {
-            text = "\"$randomQuote\""
-            setTextColor(Color.parseColor("#CBD5E1"))
+            text = "\"${video.englishText}\""
+            setTextColor(Color.WHITE)
             textSize = 14f
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.ITALIC)
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD_ITALIC)
             gravity = Gravity.CENTER
-            setPadding(0, 8, 0, 0)
+            setLineSpacing(0f, 1.25f)
         }
-        motivationCard.addView(quoteTv)
+        subCard.addView(quoteTv)
 
-        val motivationCardParams = LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
+        val subCardParams = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
         ).apply {
-            setMargins(0, 0, 0, 28)
+            setMargins(0, 0, 0, dp(12))
         }
-        rootLayout.addView(motivationCard, motivationCardParams)
+        rootLayout.addView(subCard, subCardParams)
 
-        // Remaining Time Header
+        // 6. Remaining Time Header
         val remHeaderTv = TextView(this).apply {
             text = "REMAINING SESSION TIME"
             setTextColor(Color.parseColor("#64748B"))
@@ -243,72 +320,147 @@ class BlockingActivity : AppCompatActivity() {
             typeface = Typeface.DEFAULT_BOLD
             letterSpacing = 0.08f
             gravity = Gravity.CENTER
-            setPadding(0, 0, 0, 6)
+            setPadding(0, 0, 0, dp(4))
         }
         rootLayout.addView(remHeaderTv)
 
-        // Remaining Time Counter with Red Colons
+        // 7. Remaining Time Counter with Red Colons
         remainingTimeTv = TextView(this).apply {
-            textSize = 40f
+            textSize = 38f
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
-            setPadding(0, 0, 0, 16)
+            setPadding(0, 0, 0, dp(8))
         }
         rootLayout.addView(remainingTimeTv)
         updateTimerText()
 
-        // Stay Focused Pill Badge
+        // 8. Stay Focused Pill Badge
         val pillDrawable = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
-            cornerRadius = 40f
+            cornerRadius = dp(20).toFloat()
             setColor(Color.parseColor("#1E293B"))
-            setStroke(2, Color.parseColor("#15FFFFFF"))
+            setStroke(dp(1), Color.parseColor("#15FFFFFF"))
         }
         val pillTv = TextView(this).apply {
             text = "⏱ Stay focused. You've got this!"
             setTextColor(Color.parseColor("#CBD5E1"))
-            textSize = 13f
+            textSize = 12.5f
             typeface = Typeface.DEFAULT
             background = pillDrawable
-            setPadding(32, 14, 32, 14)
+            setPadding(dp(16), dp(7), dp(16), dp(7))
             gravity = Gravity.CENTER
         }
         val pillParams = LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.WRAP_CONTENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
         ).apply {
-            gravity = Gravity.CENTER
-            setMargins(0, 0, 0, 32)
+            gravity = Gravity.CENTER_HORIZONTAL
+            setMargins(0, 0, 0, dp(14))
         }
         rootLayout.addView(pillTv, pillParams)
 
-        // Dismiss Button [🚀 I'M READY TO FOCUS]
+        // 9. Back to Focus Button [🚀 BACK TO FOCUS]
         val buttonDrawable = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
-            cornerRadius = 32f
+            cornerRadius = dp(16).toFloat()
             setColor(Color.parseColor("#4F46E5"))
         }
-
         val button = Button(this).apply {
-            text = "🚀 I'M READY TO FOCUS"
+            text = "🚀 BACK TO FOCUS"
             setTextColor(Color.WHITE)
             textSize = 15f
             typeface = Typeface.DEFAULT_BOLD
             background = buttonDrawable
-            setPadding(32, 24, 32, 24)
+            setPadding(dp(20), dp(16), dp(20), dp(16))
             setOnClickListener {
                 goHomeAndFinish()
             }
         }
         val btnParams = LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            dp(54)
         ).apply {
             setMargins(0, 0, 0, 0)
         }
         rootLayout.addView(button, btnParams)
 
-        setContentView(rootLayout)
+        setContentView(scrollView)
+
+        // VideoView Listeners
+        videoView.setOnPreparedListener { mp ->
+            mediaPlayer = mp
+            mp.isLooping = false
+            if (isMuted) {
+                mp.setVolume(0f, 0f)
+            } else {
+                mp.setVolume(1.0f, 1.0f)
+            }
+            requestAudioFocus()
+            videoView.start()
+        }
+
+        videoView.setOnCompletionListener {
+            abandonAudioFocus()
+            replayContainer.visibility = View.VISIBLE
+        }
+
+        videoView.setOnErrorListener { _, _, _ ->
+            // In case of any video hardware decoding error, keep UI functional and do not crash
+            abandonAudioFocus()
+            true
+        }
+    }
+
+    private fun dp(dpVal: Int): Int {
+        return TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP,
+            dpVal.toFloat(),
+            resources.displayMetrics
+        ).toInt()
+    }
+
+    private fun toggleMute() {
+        isMuted = !isMuted
+        muteButtonTv.text = if (isMuted) "🔇" else "🔊"
+        mediaPlayer?.let { mp ->
+            try {
+                if (isMuted) {
+                    mp.setVolume(0f, 0f)
+                } else {
+                    mp.setVolume(1.0f, 1.0f)
+                }
+            } catch (_: Exception) {}
+        }
+    }
+
+    private fun requestAudioFocus() {
+        if (isMuted) return
+        val am = audioManager ?: return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val playbackAttributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_MEDIA)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                .build()
+            val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+                .setAudioAttributes(playbackAttributes)
+                .setAcceptsDelayedFocusGain(false)
+                .build()
+            audioFocusRequest = request
+            am.requestAudioFocus(request)
+        } else {
+            @Suppress("DEPRECATION")
+            am.requestAudioFocus(null, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+        }
+    }
+
+    private fun abandonAudioFocus() {
+        val am = audioManager ?: return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            audioFocusRequest?.let { am.abandonAudioFocusRequest(it) }
+        } else {
+            @Suppress("DEPRECATION")
+            am.abandonAudioFocus(null)
+        }
     }
 
     private fun updateTimerText() {
@@ -337,16 +489,33 @@ class BlockingActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         handler.post(updateRunnable)
+        if (::videoView.isInitialized && !videoView.isPlaying && replayContainer.visibility != View.VISIBLE) {
+            requestAudioFocus()
+            videoView.start()
+        }
     }
 
     override fun onPause() {
         handler.removeCallbacks(updateRunnable)
+        if (::videoView.isInitialized && videoView.isPlaying) {
+            videoView.pause()
+        }
+        abandonAudioFocus()
         super.onPause()
+    }
+
+    override fun onDestroy() {
+        if (::videoView.isInitialized) {
+            videoView.stopPlayback()
+        }
+        abandonAudioFocus()
+        super.onDestroy()
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        @Suppress("DEPRECATION")
         overridePendingTransition(0, 0)
         val appName = intent.getStringExtra(EXTRA_BLOCKED_APP_NAME)?.takeIf { it.isNotBlank() } ?: "This App"
         if (::subTv.isInitialized) {
@@ -361,12 +530,17 @@ class BlockingActivity : AppCompatActivity() {
     }
 
     private fun goHomeAndFinish() {
+        if (::videoView.isInitialized) {
+            videoView.stopPlayback()
+        }
+        abandonAudioFocus()
         val homeIntent = Intent(Intent.ACTION_MAIN).apply {
             addCategory(Intent.CATEGORY_HOME)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
         startActivity(homeIntent)
         finish()
+        @Suppress("DEPRECATION")
         overridePendingTransition(0, 0)
     }
 }
